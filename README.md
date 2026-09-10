@@ -166,3 +166,8 @@ Each runtime receives a random `OPENCODE_SERVER_PASSWORD`. The current MVP does 
 The workspace image uses UID/GID `10001` for the `opencode` user. This avoids the UID 1000 collision with the built-in `node` user in the official Node image. The runtime uses `--userns keep-id:uid=10001,gid=10001` so the rootless host service account maps to that user inside each workspace container.
 
 The OpenCode npm package is installed with `--allow-scripts=opencode-ai` because its postinstall script is required by current npm versions.
+
+
+## Writable XDG directories with read-only runtime rootfs
+
+Workspace containers keep the image root filesystem read-only. OpenCode also writes to XDG state and cache directories, so each runtime mounts a persistent per-user/project `opencode-state` directory at `~/.local/state` and an ephemeral tmpfs at `~/.cache`. The control plane explicitly sets `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`, and `XDG_CONFIG_HOME`.

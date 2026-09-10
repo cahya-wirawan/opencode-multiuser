@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && npm install -g --allow-scripts=opencode-ai "opencode-ai@${OPENCODE_VERSION}" \
  && groupadd --gid "${OPENCODE_GID}" opencode \
  && useradd --create-home --uid "${OPENCODE_UID}" --gid "${OPENCODE_GID}" --shell /bin/bash opencode \
- && mkdir -p /workspace /home/opencode/.local/share/opencode /home/opencode/.config/opencode \
+ && mkdir -p /workspace \
+      /home/opencode/.local/share/opencode \
+      /home/opencode/.local/state/opencode \
+      /home/opencode/.cache \
+      /home/opencode/.config/opencode \
  && chown -R opencode:opencode /workspace /home/opencode \
  && rm -rf /var/lib/apt/lists/*
 

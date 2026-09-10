@@ -15,14 +15,21 @@ class RuntimeResult:
 
 
 def _run(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(
+    cp = subprocess.run(
         [settings.podman_bin, *args],
-        check=check,
+        check=False,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         timeout=90,
     )
+    if check and cp.returncode != 0:
+        raise RuntimeError(
+            f"Podman command failed with exit code {cp.returncode}\n"
+            f"stdout:\n{cp.stdout}\n"
+            f"stderr:\n{cp.stderr}"
+        )
+    return cp
 
 
 def ensure_network() -> None:
@@ -31,21 +38,22 @@ def ensure_network() -> None:
         _run(["network", "create", settings.podman_network])
 
 
-def workspace_paths(user_id: str, project_slug: str) -> tuple[Path, Path, Path]:
+def workspace_paths(user_id: str, project_slug: str) -> tuple[Path, Path, Path, Path]:
     if not _SAFE.match(project_slug):
         raise ValueError("invalid project slug")
     root = settings.expanded_data_root / "users" / user_id / project_slug
     workspace = root / "workspace"
     data = root / "opencode-data"
+    state = root / "opencode-state"
     config = root / "opencode-config"
-    for path in (workspace, data, config):
+    for path in (workspace, data, state, config):
         path.mkdir(parents=True, exist_ok=True)
-    return workspace, data, config
+    return workspace, data, state, config
 
 
 def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id: int) -> RuntimeResult:
     ensure_network()
-    workspace, data, config = workspace_paths(user_id, project_slug)
+    workspace, data, state, config = workspace_paths(user_id, project_slug)
     short = workspace_id.replace("-", "")[:12]
     container_name = f"oc-{slot_id}-{short}"
     password = secrets.token_urlsafe(32)
@@ -64,11 +72,17 @@ def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id:
         "--cap-drop", "ALL",
         "--userns", "keep-id:uid=10001,gid=10001",
         "--read-only",
-        "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g",
+        "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g,mode=1777",
+        "--tmpfs", "/home/opencode/.cache:rw,nosuid,nodev,size=512m,mode=1777",
         "--volume", f"{workspace}:/workspace:rw,Z",
         "--volume", f"{data}:/home/opencode/.local/share/opencode:rw,Z",
+        "--volume", f"{state}:/home/opencode/.local/state:rw,Z",
         "--volume", f"{config}:/home/opencode/.config/opencode:rw,Z",
         "--env", "HOME=/home/opencode",
+        "--env", "XDG_DATA_HOME=/home/opencode/.local/share",
+        "--env", "XDG_STATE_HOME=/home/opencode/.local/state",
+        "--env", "XDG_CACHE_HOME=/home/opencode/.cache",
+        "--env", "XDG_CONFIG_HOME=/home/opencode/.config",
         "--env", "OPENCODE_SERVER_USERNAME=opencode",
         "--env", f"OPENCODE_SERVER_PASSWORD={password}",
     ]
