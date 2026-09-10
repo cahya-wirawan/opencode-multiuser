@@ -1,0 +1,20 @@
+[project]
+name = "opencode-multiuser"
+version = "0.1.0"
+description = "Multi-user OpenCode control plane for rootless Podman, systemd and Traefik"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "uvicorn[standard]>=0.35,<1",
+  "sqlalchemy>=2.0,<3",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.10,<3",
+  "PyJWT>=2.10,<3",
+  "argon2-cffi>=25.1,<26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "httpx>=0.28,<1"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

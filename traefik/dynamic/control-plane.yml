@@ -1,0 +1,13 @@
+# Example; update code.example.com before deployment.
+http:
+  routers:
+    control-plane:
+      rule: "Host(`code.example.com`)"
+      entryPoints:
+        - websecure
+      service: control-plane
+  services:
+    control-plane:
+      loadBalancer:
+        servers:
+          - url: "http://host.containers.internal:8000"

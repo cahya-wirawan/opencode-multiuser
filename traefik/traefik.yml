@@ -1,0 +1,27 @@
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":8080"
+  websecure:
+    address: ":8443"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+log:
+  level: INFO
+
+accessLog: {}
+
+# Production example once ports 80/443 and DNS are configured:
+# certificatesResolvers:
+#   letsencrypt:
+#     acme:
+#       email: admin@example.com
+#       storage: /var/lib/traefik/acme.json
+#       httpChallenge:
+#         entryPoint: web

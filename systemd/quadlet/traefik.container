@@ -1,0 +1,21 @@
+[Unit]
+Description=OpenCode Multiuser Traefik
+After=opencode-network.service
+Requires=opencode-network.service
+
+[Container]
+Image=docker.io/library/traefik:v3.5
+ContainerName=opencode-traefik
+Network=opencode.network
+Volume=%h/.config/opencode-multiuser/traefik.yml:/etc/traefik/traefik.yml:ro,Z
+Volume=%h/.local/share/opencode-multiuser/traefik-dynamic:/etc/traefik/dynamic:ro,Z
+Volume=%h/.local/share/opencode-multiuser/traefik:/var/lib/traefik:Z
+PublishPort=8080:8080
+PublishPort=8443:8443
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

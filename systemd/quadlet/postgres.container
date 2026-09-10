@@ -1,0 +1,21 @@
+[Unit]
+Description=OpenCode Multiuser PostgreSQL
+After=opencode-network.service
+Requires=opencode-network.service
+
+[Container]
+Image=docker.io/library/postgres:17
+ContainerName=opencode-postgres
+Network=opencode.network
+Environment=POSTGRES_DB=opencode
+Environment=POSTGRES_USER=opencode
+EnvironmentFile=%h/.config/opencode-multiuser/postgres.env
+Volume=%h/.local/share/opencode-multiuser/postgres:/var/lib/postgresql/data:Z
+PublishPort=127.0.0.1:5432:5432
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
