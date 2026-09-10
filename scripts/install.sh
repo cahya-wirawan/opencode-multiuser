@@ -4,6 +4,32 @@ set -euo pipefail
 BASE_DOMAIN=${BASE_DOMAIN:-code.example.com}
 OPENCODE_VERSION=${OPENCODE_VERSION:-1.18.30}
 SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
+
+# The control plane requires Python >= 3.11. RHEL 9 commonly exposes 3.9
+# as `python3`, so prefer a newer explicitly-versioned interpreter when present.
+if [[ -n "${PYTHON_BIN:-}" ]]; then
+  PYTHON_CANDIDATES=("$PYTHON_BIN")
+else
+  PYTHON_CANDIDATES=(python3.13 python3.12 python3.11 python3)
+fi
+
+PYTHON_BIN=""
+for candidate in "${PYTHON_CANDIDATES[@]}"; do
+  if command -v "$candidate" >/dev/null 2>&1 && \
+     "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+    PYTHON_BIN=$(command -v "$candidate")
+    break
+  fi
+done
+
+if [[ -z "$PYTHON_BIN" ]]; then
+  echo "ERROR: Python 3.11 or newer is required." >&2
+  echo "Your default python3 may be older (RHEL 9 commonly uses Python 3.9)." >&2
+  echo "Install Python 3.11+ or rerun with PYTHON_BIN=/path/to/python3.11 ./scripts/install.sh" >&2
+  exit 1
+fi
+
+echo "Using Python: $PYTHON_BIN ($($PYTHON_BIN --version 2>&1))"
 TARGET="$HOME/opt/opencode-multiuser"
 CFG="$HOME/.config/opencode-multiuser"
 QUADLET="$HOME/.config/containers/systemd"
@@ -50,9 +76,12 @@ fi
 
 sed "s/code.example.com/$BASE_DOMAIN/g" "$TARGET/traefik/dynamic/control-plane.yml" > "$DATA/traefik-dynamic/control-plane.yml"
 
-python3 -m venv "$TARGET/.venv"
-"$TARGET/.venv/bin/pip" install --upgrade pip
-"$TARGET/.venv/bin/pip" install -e "$TARGET"
+# Always recreate the venv so a previous failed install made with an older
+# interpreter (for example Python 3.9) cannot be accidentally reused.
+rm -rf "$TARGET/.venv"
+"$PYTHON_BIN" -m venv "$TARGET/.venv"
+"$TARGET/.venv/bin/python" -m pip install --upgrade pip
+"$TARGET/.venv/bin/python" -m pip install -e "$TARGET"
 
 podman build --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" -t localhost/opencode-workspace:latest -f "$TARGET/Containerfile.workspace" "$TARGET"
 podman pull docker.io/library/postgres:17

@@ -46,11 +46,21 @@ podman info --format '{{.Host.CgroupsVersion}}'
 
 ## Install
 
+The installer requires Python 3.11 or newer. It automatically prefers `python3.13`, `python3.12`, or `python3.11` over an older default `python3`. You can also select the interpreter explicitly with `PYTHON_BIN`.
+
 ```bash
 export BASE_DOMAIN=code.example.com
 sudo loginctl enable-linger "$USER"
 ./scripts/install.sh
 ```
+
+If your system's default `python3` is older, for example Python 3.9, run:
+
+```bash
+PYTHON_BIN=python3.11 ./scripts/install.sh
+```
+
+A failed older install may have left a Python 3.9 virtual environment under `$HOME/opt/opencode-multiuser/.venv`. The installer now recreates this virtual environment automatically using the selected Python 3.11+ interpreter.
 
 The installer creates:
 
