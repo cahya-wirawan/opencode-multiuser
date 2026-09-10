@@ -1,12 +1,15 @@
 FROM docker.io/library/node:24-bookworm-slim
 
 ARG OPENCODE_VERSION=1.18.30
+ARG OPENCODE_UID=10001
+ARG OPENCODE_GID=10001
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates curl git git-lfs jq openssh-client ripgrep \
     build-essential python3 python3-pip python3-venv \
- && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
- && useradd --create-home --uid 1000 --shell /bin/bash opencode \
+ && npm install -g --allow-scripts=opencode-ai "opencode-ai@${OPENCODE_VERSION}" \
+ && groupadd --gid "${OPENCODE_GID}" opencode \
+ && useradd --create-home --uid "${OPENCODE_UID}" --gid "${OPENCODE_GID}" --shell /bin/bash opencode \
  && mkdir -p /workspace /home/opencode/.local/share/opencode /home/opencode/.config/opencode \
  && chown -R opencode:opencode /workspace /home/opencode \
  && rm -rf /var/lib/apt/lists/*

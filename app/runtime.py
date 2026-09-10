@@ -62,7 +62,7 @@ def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id:
         "--pids-limit", str(settings.workspace_pids_limit),
         "--security-opt", "no-new-privileges",
         "--cap-drop", "ALL",
-        "--userns", "keep-id:uid=1000,gid=1000",
+        "--userns", "keep-id:uid=10001,gid=10001",
         "--read-only",
         "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g",
         "--volume", f"{workspace}:/workspace:rw,Z",
