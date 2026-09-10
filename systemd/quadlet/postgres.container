@@ -10,7 +10,7 @@ Network=opencode.network
 Environment=POSTGRES_DB=opencode
 Environment=POSTGRES_USER=opencode
 EnvironmentFile=%h/.config/opencode-multiuser/postgres.env
-Volume=%h/.local/share/opencode-multiuser/postgres:/var/lib/postgresql/data:Z
+Volume=postgres-data.volume:/var/lib/postgresql/data
 PublishPort=127.0.0.1:5432:5432
 
 [Service]

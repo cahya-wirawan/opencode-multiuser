@@ -85,6 +85,16 @@ The installer creates:
   users/<uuid>/<project>/...
 ```
 
+### PostgreSQL storage
+
+PostgreSQL uses a Podman-managed named volume (`opencode-postgres-data`) rather than a host bind mount. This avoids rootless ownership failures when the PostgreSQL entrypoint changes `/var/lib/postgresql/data` to the internal `postgres` user (UID/GID 999). Inspect it with:
+
+```bash
+podman volume inspect opencode-postgres-data
+```
+
+Back up PostgreSQL logically with `pg_dump`/`pg_dumpall`; do not depend on the named volume's internal storage path.
+
 ## API quick test
 
 Register:
@@ -150,3 +160,9 @@ Each runtime receives a random `OPENCODE_SERVER_PASSWORD`. The current MVP does 
 5. Admin page for slots, users, active workspaces, quotas and audit events.
 6. Per-project container images/devcontainer support.
 7. Network egress restrictions and secret broker.
+
+## Container UID/GID
+
+The workspace image uses UID/GID `10001` for the `opencode` user. This avoids the UID 1000 collision with the built-in `node` user in the official Node image. The runtime uses `--userns keep-id:uid=10001,gid=10001` so the rootless host service account maps to that user inside each workspace container.
+
+The OpenCode npm package is installed with `--allow-scripts=opencode-ai` because its postinstall script is required by current npm versions.

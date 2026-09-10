@@ -1,0 +1,5 @@
+[Unit]
+Description=OpenCode Multiuser PostgreSQL data volume
+
+[Volume]
+VolumeName=opencode-postgres-data
