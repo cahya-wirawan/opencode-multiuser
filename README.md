@@ -9,11 +9,13 @@ Browser
   |
   v
 Traefik (rootless Podman, systemd/Quadlet)
-  |-- code.example.com ----------> FastAPI control plane :8000
+  |-- code.example.com ----------> FastAPI control plane :8010 (configurable)
   `-- w-<workspace>.example.com --> fresh OpenCode container :4096
                                          |
                                          +-- /workspace (persistent per user/project)
                                          +-- ~/.local/share/opencode (persistent sessions/auth)
+                                         +-- ~/.local/state (persistent state)
+                                         +-- ~/.cache (ephemeral tmpfs)
                                          `-- ~/.config/opencode (persistent config)
 
 FastAPI control plane
@@ -51,8 +53,11 @@ The installer requires Python 3.11 or newer. It automatically prefers `python3.1
 ```bash
 export BASE_DOMAIN=code.example.com
 sudo loginctl enable-linger "$USER"
-./scripts/install.sh
+./scripts/check-host.sh
+PYTHON_BIN=python3.11 ./scripts/install.sh
 ```
+
+The installer now fails early if the systemd user runtime/bus is missing, if the rootless user manager lacks the `cpu`, `memory`, or `pids` cgroup controllers, or if the selected control-plane port is already occupied. The default direct control-plane port is `8010`; override it with `CONTROL_PLANE_PORT=8011` (or another free port).
 
 If your system's default `python3` is older, for example Python 3.9, run:
 
@@ -68,6 +73,7 @@ The installer creates:
 ~/.config/containers/systemd/
   opencode.network
   postgres.container
+  postgres-data.volume
   traefik.container
 
 ~/.config/systemd/user/
@@ -79,7 +85,6 @@ The installer creates:
   traefik.yml
 
 ~/.local/share/opencode-multiuser/
-  postgres/
   traefik/
   traefik-dynamic/
   users/<uuid>/<project>/...
@@ -100,7 +105,7 @@ Back up PostgreSQL logically with `pg_dump`/`pg_dumpall`; do not depend on the n
 Register:
 
 ```bash
-curl -sS http://127.0.0.1:8000/auth/register \
+curl -sS http://127.0.0.1:8010/auth/register \
   -H 'content-type: application/json' \
   -d '{"username":"cahya","password":"replace-with-a-long-password"}'
 ```
@@ -109,7 +114,7 @@ Start a workspace using the returned JWT:
 
 ```bash
 TOKEN='...'
-curl -sS http://127.0.0.1:8000/workspaces/start \
+curl -sS http://127.0.0.1:8010/workspaces/start \
   -H "authorization: Bearer $TOKEN" \
   -H 'content-type: application/json' \
   -d '{"project_slug":"rag-project"}'
@@ -118,9 +123,20 @@ curl -sS http://127.0.0.1:8000/workspaces/start \
 Stop it:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8000/workspaces/<workspace-id>/stop \
+curl -sS -X POST http://127.0.0.1:8010/workspaces/<workspace-id>/stop \
   -H "authorization: Bearer $TOKEN"
 ```
+
+
+## systemd user manager and cgroup delegation
+
+This deployment launches rootless Podman containers from a systemd user service. The service is packaged with `Delegate=yes`, but the parent `user@<UID>.service` must also receive the cgroup controllers needed by `--cpus`, `--memory`, and `--pids-limit`. `scripts/install.sh` checks this before building images. If the check fails, configure `/etc/systemd/system/user@.service.d/delegate.conf` as root as instructed by the installer, restart the numeric `user@<UID>.service`, then log in again.
+
+The rootless runtime directory `/run/user/<UID>` and its `bus` socket must be created by systemd/logind; do not create them manually. Enable lingering for the service account so the user manager survives logout.
+
+## HTTP test mode
+
+The v5 defaults match the current test deployment: TLS is disabled, workspace URLs use `http`, and Traefik listens on 8080/8443. Port 8443 is therefore plain HTTP until `TRAEFIK_TLS=true` and certificates are configured. Internal Traefik-to-OpenCode traffic remains HTTP even after external TLS is enabled.
 
 ## Rootless ports 80/443
 
@@ -128,7 +144,7 @@ The sample intentionally uses 8080/8443. Rootless processes normally cannot bind
 
 ## TLS
 
-The example ships with TLS disabled for generated workspace routes (`TRAEFIK_TLS=false`) so the initial deployment is easy to inspect. For production:
+The example ships with TLS disabled for generated workspace routes (`TRAEFIK_TLS=false`) and `WORKSPACE_SCHEME=http` so the initial deployment is easy to inspect. For production:
 
 1. Configure 80/443 reachability.
 2. Configure Traefik ACME in `traefik.yml` or install your organization's certificate.
@@ -171,3 +187,15 @@ The OpenCode npm package is installed with `--allow-scripts=opencode-ai` because
 ## Writable XDG directories with read-only runtime rootfs
 
 Workspace containers keep the image root filesystem read-only. OpenCode also writes to XDG state and cache directories, so each runtime mounts a persistent per-user/project `opencode-state` directory at `~/.local/state` and an ephemeral tmpfs at `~/.cache`. The control plane explicitly sets `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`, and `XDG_CONFIG_HOME`.
+
+## Changes in v5
+
+- `CONTROL_PLANE_PORT` is configurable (default `8010`) instead of hard-coded to 8000.
+- The packaged control-plane service has `Delegate=yes` and explicit user-runtime environment.
+- Installation preflights the systemd user bus and required cgroup-v2 controllers.
+- The installer detects a busy control-plane port before starting Uvicorn.
+- PostgreSQL uses the named `postgres-data.volume` definition from v3.
+- Workspace runtime includes persistent XDG data/state/config mounts and ephemeral cache/tmpfs from v4.
+- HTTP is the default public scheme while TLS is disabled, and workspace URLs include the non-standard public port.
+- OpenCode installation is smoke-tested with `opencode --version` during the image build.
+- Podman stderr is preserved in API errors for easier diagnosis.

@@ -6,8 +6,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     base_domain: str = "code.example.com"
-    control_plane_url: str = "http://127.0.0.1:8000"
-    workspace_scheme: str = "https"
+    control_plane_url: str = "http://127.0.0.1:8010"
+    control_plane_port: int = 8010
+    workspace_scheme: str = "http"
+    workspace_public_port: int = 8443
+    traefik_entrypoint: str = "websecure"
 
     database_url: str = "sqlite:///./opencode-multiuser.db"
     jwt_secret: str = "development-only-change-me"

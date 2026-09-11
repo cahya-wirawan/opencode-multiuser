@@ -7,7 +7,7 @@ packages = ["app"]
 
 [project]
 name = "opencode-multiuser"
-version = "0.1.0"
+version = "0.2.0"
 description = "Multi-user OpenCode control plane for rootless Podman, systemd and Traefik"
 requires-python = ">=3.11"
 dependencies = [

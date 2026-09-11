@@ -1,13 +1,13 @@
-# Example; update code.example.com before deployment.
+# Rendered by scripts/install.sh.
 http:
   routers:
     control-plane:
-      rule: "Host(`code.example.com`)"
+      rule: "Host(`__BASE_DOMAIN__`)"
       entryPoints:
-        - websecure
+        - __TRAEFIK_ENTRYPOINT__
       service: control-plane
   services:
     control-plane:
       loadBalancer:
         servers:
-          - url: "http://host.containers.internal:8000"
+          - url: "http://host.containers.internal:__CONTROL_PLANE_PORT__"

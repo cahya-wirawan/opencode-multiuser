@@ -7,13 +7,18 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=%h/opt/opencode-multiuser
 EnvironmentFile=%h/.config/opencode-multiuser/control-plane.env
-ExecStart=%h/opt/opencode-multiuser/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
-Restart=always
+Environment=XDG_RUNTIME_DIR=%t
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus
+ExecStart=%h/opt/opencode-multiuser/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port ${CONTROL_PLANE_PORT}
+Restart=on-failure
 RestartSec=3
+Delegate=yes
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ReadWritePaths=%h/.local/share/opencode-multiuser
+ReadWritePaths=%h/.local/share/containers
+ReadWritePaths=%t
 
 [Install]
 WantedBy=default.target

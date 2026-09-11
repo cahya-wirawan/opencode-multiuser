@@ -25,7 +25,9 @@ def write_route(workspace_id: str, container_name: str) -> str:
     tmp = target.with_suffix(".tmp")
     tmp.write_text(content)
     os.replace(tmp, target)
-    return f"{settings.workspace_scheme}://{host}"
+    default_port = 80 if settings.workspace_scheme == "http" else 443
+    port = "" if settings.workspace_public_port == default_port else f":{settings.workspace_public_port}"
+    return f"{settings.workspace_scheme}://{host}{port}"
 
 
 def remove_route(workspace_id: str) -> None:

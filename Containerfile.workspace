@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates curl git git-lfs jq openssh-client ripgrep \
     build-essential python3 python3-pip python3-venv \
  && npm install -g --allow-scripts=opencode-ai "opencode-ai@${OPENCODE_VERSION}" \
+ && opencode --version \
  && groupadd --gid "${OPENCODE_GID}" opencode \
  && useradd --create-home --uid "${OPENCODE_UID}" --gid "${OPENCODE_GID}" --shell /bin/bash opencode \
  && mkdir -p /workspace \
