@@ -148,6 +148,7 @@ JWT_SECRET=$JWT_SECRET
 ALLOW_REGISTRATION=true
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
+COOKIE_SECURE=false
 PODMAN_BIN=/usr/bin/podman
 WORKSPACE_IMAGE=localhost/opencode-workspace:latest
 PODMAN_NETWORK=opencode-net
@@ -169,11 +170,21 @@ else
   grep -q '^TRAEFIK_ENTRYPOINT=' "$CFG/control-plane.env" || echo "TRAEFIK_ENTRYPOINT=$TRAEFIK_ENTRYPOINT" >> "$CFG/control-plane.env"
   grep -q '^SESSION_COOKIE_NAME=' "$CFG/control-plane.env" || echo "SESSION_COOKIE_NAME=oc_session" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_COOKIE_NAME=' "$CFG/control-plane.env" || echo "WORKSPACE_COOKIE_NAME=oc_workspace" >> "$CFG/control-plane.env"
+  grep -q '^COOKIE_SECURE=' "$CFG/control-plane.env" || echo "COOKIE_SECURE=false" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_HOST_PORT_BASE=' "$CFG/control-plane.env" || echo "WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE" >> "$CFG/control-plane.env"
 
   # v6 uses one public gateway URL. Rewrite legacy public URL defaults while
   # preserving a custom value if the administrator already set one.
   if grep -q '^CONTROL_PLANE_URL=http://code.example.com' "$CFG/control-plane.env"; then
+    sed -i "s|^CONTROL_PLANE_URL=.*|CONTROL_PLANE_URL=http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT|" "$CFG/control-plane.env"
+  fi
+
+  # Older releases may have persisted an HTTPS public URL even while Traefik
+  # was deliberately running without TLS. Normalize that known upgrade case so
+  # browser cookies and /open/<workspace> redirects remain on working HTTP.
+  EFFECTIVE_TRAEFIK_TLS=$(sed -n 's/^TRAEFIK_TLS=//p' "$CFG/control-plane.env" | tail -1 | tr '[:upper:]' '[:lower:]')
+  CURRENT_PUBLIC_URL=$(sed -n 's/^CONTROL_PLANE_URL=//p' "$CFG/control-plane.env" | tail -1)
+  if [[ "${EFFECTIVE_TRAEFIK_TLS:-false}" != "true" && "$CURRENT_PUBLIC_URL" == https://$BASE_DOMAIN* ]]; then
     sed -i "s|^CONTROL_PLANE_URL=.*|CONTROL_PLANE_URL=http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT|" "$CFG/control-plane.env"
   fi
 fi

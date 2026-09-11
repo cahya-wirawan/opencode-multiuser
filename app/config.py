@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     allow_registration: bool = True
     session_cookie_name: str = "oc_session"
     workspace_cookie_name: str = "oc_workspace"
+    # Explicit cookie policy. Keep this independent of CONTROL_PLANE_URL so an
+    # upgrade from an older HTTPS URL cannot accidentally mark cookies Secure
+    # while Traefik is serving plain HTTP.
+    cookie_secure: bool = False
 
     podman_bin: str = "/usr/bin/podman"
     workspace_image: str = "localhost/opencode-workspace:latest"
@@ -45,9 +49,6 @@ class Settings(BaseSettings):
     def expanded_traefik_dynamic_dir(self) -> Path:
         return Path(self.traefik_dynamic_dir.replace("%h", str(Path.home()))).expanduser().resolve()
 
-    @property
-    def cookie_secure(self) -> bool:
-        return self.control_plane_url.lower().startswith("https://")
 
 
 settings = Settings()

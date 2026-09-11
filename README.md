@@ -1,4 +1,4 @@
-# Multiuser OpenCode
+# OpenCode Multiuser v6 — single-host gateway
 
 A multi-user OpenCode control plane for **rootless Podman + systemd/Quadlet + Traefik**. v6 removes per-workspace public hostnames and routes every user through one public URL.
 
@@ -125,6 +125,7 @@ MAX_SLOTS=10
 WORKSPACE_HOST_PORT_BASE=41000
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
+COOKIE_SECURE=false
 ```
 
 `MAX_SLOTS=10` means at most ten simultaneous workspace containers. It does **not** prestart ten containers.
@@ -240,3 +241,8 @@ Expected health response:
 ```json
 {"ok":true,"mode":"single-host-gateway"}
 ```
+
+
+### HTTP cookie note
+
+When Traefik is serving plain HTTP (`TRAEFIK_TLS=false`), keep `COOKIE_SECURE=false`. Set it to `true` only after the public gateway is actually HTTPS. This setting is intentionally independent from `CONTROL_PLANE_URL` so upgrades from older configurations do not break browser login cookies.
