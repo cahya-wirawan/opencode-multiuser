@@ -7,8 +7,8 @@ packages = ["app"]
 
 [project]
 name = "opencode-multiuser"
-version = "0.2.0"
-description = "Multi-user OpenCode control plane for rootless Podman, systemd and Traefik"
+version = "0.3.0"
+description = "Single-host multi-user OpenCode gateway for rootless Podman, systemd and Traefik"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116,<1",
@@ -18,10 +18,12 @@ dependencies = [
   "pydantic-settings>=2.10,<3",
   "PyJWT>=2.10,<3",
   "argon2-cffi>=25.1,<26",
+  "httpx>=0.28,<1",
+  "websockets>=15,<17",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9", "httpx>=0.28,<1"]
+dev = ["pytest>=8,<9"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -26,3 +26,4 @@ class WorkspaceResponse(BaseModel):
     status: str
     url: str | None = None
     slot_id: int | None = None
+    container_name: str | None = None

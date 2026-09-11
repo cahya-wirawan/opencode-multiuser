@@ -1,34 +1,14 @@
-import os
-from pathlib import Path
 from .config import settings
 
 
-def route_path(workspace_id: str) -> Path:
-    return settings.expanded_traefik_dynamic_dir / f"workspace-{workspace_id}.yml"
+def workspace_open_url(workspace_id: str) -> str:
+    return f"{settings.control_plane_url.rstrip('/')}/open/{workspace_id}"
 
 
-def workspace_host(workspace_id: str) -> str:
-    short = workspace_id.replace("-", "")[:16]
-    return f"w-{short}.{settings.base_domain}"
-
-
-def write_route(workspace_id: str, container_name: str) -> str:
+def cleanup_legacy_workspace_routes() -> None:
+    """Remove v5 per-workspace Traefik route files after upgrading to v6."""
     directory = settings.expanded_traefik_dynamic_dir
-    directory.mkdir(parents=True, exist_ok=True)
-    host = workspace_host(workspace_id)
-    router = f"ws-{workspace_id.replace('-', '')[:16]}"
-    tls_lines = ""
-    if settings.traefik_tls:
-        tls_lines = f"\n      tls:\n        certResolver: {settings.traefik_cert_resolver}"
-    content = f'''http:\n  routers:\n    {router}:\n      rule: \"Host(`{host}`)\"\n      service: {router}\n      entryPoints:\n        - websecure{tls_lines}\n  services:\n    {router}:\n      loadBalancer:\n        servers:\n          - url: \"http://{container_name}:4096\"\n'''
-    target = route_path(workspace_id)
-    tmp = target.with_suffix(".tmp")
-    tmp.write_text(content)
-    os.replace(tmp, target)
-    default_port = 80 if settings.workspace_scheme == "http" else 443
-    port = "" if settings.workspace_public_port == default_port else f":{settings.workspace_public_port}"
-    return f"{settings.workspace_scheme}://{host}{port}"
-
-
-def remove_route(workspace_id: str) -> None:
-    route_path(workspace_id).unlink(missing_ok=True)
+    if not directory.exists():
+        return
+    for path in directory.glob("workspace-*.yml"):
+        path.unlink(missing_ok=True)

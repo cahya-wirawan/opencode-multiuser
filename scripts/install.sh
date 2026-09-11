@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -n "${BASE_DOMAIN+x}" ]]; then BASE_DOMAIN_EXPLICIT=1; fi
 BASE_DOMAIN=${BASE_DOMAIN:-code.example.com}
 OPENCODE_VERSION=${OPENCODE_VERSION:-1.18.30}
 if [[ -n "${CONTROL_PLANE_PORT+x}" ]]; then CONTROL_PLANE_PORT_EXPLICIT=1; fi
 CONTROL_PLANE_PORT=${CONTROL_PLANE_PORT:-8010}
+CONTROL_PLANE_BIND=${CONTROL_PLANE_BIND:-0.0.0.0}
 TRAEFIK_PUBLIC_PORT=${TRAEFIK_PUBLIC_PORT:-8443}
 TRAEFIK_ENTRYPOINT=${TRAEFIK_ENTRYPOINT:-websecure}
+WORKSPACE_HOST_PORT_BASE=${WORKSPACE_HOST_PORT_BASE:-41000}
 SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
-# The control plane requires Python >= 3.11. RHEL 9 commonly exposes 3.9
-# as `python3`, so prefer a newer explicitly-versioned interpreter when present.
 if [[ -n "${PYTHON_BIN:-}" ]]; then
   PYTHON_CANDIDATES=("$PYTHON_BIN")
 else
@@ -34,7 +35,6 @@ fi
 
 echo "Using Python: $PYTHON_BIN ($($PYTHON_BIN --version 2>&1))"
 
-# Rootless Podman and systemctl --user require the systemd user runtime/bus.
 USER_UID=$(id -u)
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/${USER_UID}}
 export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}
@@ -46,7 +46,7 @@ Expected:
   $XDG_RUNTIME_DIR
   $XDG_RUNTIME_DIR/bus
 
-Run as root (or via sudo) before installing:
+Run as root (or via sudo):
   loginctl enable-linger $USER
   systemctl start user-runtime-dir@${USER_UID}.service
   systemctl start user@${USER_UID}.service
@@ -62,8 +62,6 @@ if ! systemctl --user show-environment >/dev/null 2>&1; then
   exit 1
 fi
 
-# Resource-limited rootless containers need cgroup v2 controllers delegated to
-# the user manager. Fail early instead of producing a cryptic crun error later.
 CGROUP_CTRL="/sys/fs/cgroup/user.slice/user-${USER_UID}.slice/user@${USER_UID}.service/cgroup.controllers"
 if [[ -r "$CGROUP_CTRL" ]]; then
   controllers=" $(cat "$CGROUP_CTRL") "
@@ -101,28 +99,30 @@ DATA="$HOME/.local/share/opencode-multiuser"
 
 mkdir -p "$TARGET" "$CFG" "$QUADLET" "$USER_SYSTEMD" "$DATA/traefik-dynamic" "$DATA/traefik"
 
-# On upgrades, honor the already-persisted control-plane port unless the user
-# explicitly supplied CONTROL_PLANE_PORT for this run.
-if [[ -f "$CFG/control-plane.env" && -z "${CONTROL_PLANE_PORT_EXPLICIT:-}" ]]; then
-  persisted_port=$(sed -n 's/^CONTROL_PLANE_PORT=//p' "$CFG/control-plane.env" | tail -1)
-  [[ -n "$persisted_port" ]] && CONTROL_PLANE_PORT=$persisted_port
+# On upgrades, reuse persisted public host and port unless explicitly overridden.
+if [[ -f "$CFG/control-plane.env" ]]; then
+  if [[ -z "${BASE_DOMAIN_EXPLICIT:-}" ]]; then
+    persisted_domain=$(sed -n 's/^BASE_DOMAIN=//p' "$CFG/control-plane.env" | tail -1)
+    [[ -n "$persisted_domain" ]] && BASE_DOMAIN=$persisted_domain
+  fi
+  if [[ -z "${CONTROL_PLANE_PORT_EXPLICIT:-}" ]]; then
+    persisted_port=$(sed -n 's/^CONTROL_PLANE_PORT=//p' "$CFG/control-plane.env" | tail -1)
+    [[ -n "$persisted_port" ]] && CONTROL_PLANE_PORT=$persisted_port
+  fi
 fi
 
-# Stop the existing control plane before replacing files and checking its port.
 systemctl --user stop opencode-control-plane.service >/dev/null 2>&1 || true
 
-# If the selected local Uvicorn port is occupied by another process, stop here
-# with a useful error. Override with CONTROL_PLANE_PORT=<free-port>.
 if command -v ss >/dev/null 2>&1 && ss -H -ltn "sport = :${CONTROL_PLANE_PORT}" 2>/dev/null | grep -q .; then
   cat >&2 <<EOF
 ERROR: CONTROL_PLANE_PORT=${CONTROL_PLANE_PORT} is already in use.
-Choose another free loopback port, for example:
+Choose another free port, for example:
   CONTROL_PLANE_PORT=8011 PYTHON_BIN=${PYTHON_BIN} ./scripts/install.sh
 EOF
   exit 1
 fi
 
-rsync -a --delete --exclude .venv "$SELF_DIR/" "$TARGET/"
+rsync -a --delete --exclude .venv --exclude .pytest_cache "$SELF_DIR/" "$TARGET/"
 cp "$TARGET/systemd/quadlet/"* "$QUADLET/"
 cp "$TARGET/systemd/opencode-control-plane.service" "$USER_SYSTEMD/"
 cp "$TARGET/traefik/traefik.yml" "$CFG/traefik.yml"
@@ -139,14 +139,15 @@ if [[ ! -f "$CFG/control-plane.env" ]]; then
   JWT_SECRET=$(openssl rand -hex 32)
   cat > "$CFG/control-plane.env" <<ENV
 BASE_DOMAIN=$BASE_DOMAIN
+CONTROL_PLANE_BIND=$CONTROL_PLANE_BIND
 CONTROL_PLANE_PORT=$CONTROL_PLANE_PORT
 CONTROL_PLANE_URL=http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT
-WORKSPACE_SCHEME=http
-WORKSPACE_PUBLIC_PORT=$TRAEFIK_PUBLIC_PORT
 TRAEFIK_ENTRYPOINT=$TRAEFIK_ENTRYPOINT
 DATABASE_URL=postgresql+psycopg://opencode:${POSTGRES_PASSWORD}@127.0.0.1:5432/opencode
 JWT_SECRET=$JWT_SECRET
 ALLOW_REGISTRATION=true
+SESSION_COOKIE_NAME=oc_session
+WORKSPACE_COOKIE_NAME=oc_workspace
 PODMAN_BIN=/usr/bin/podman
 WORKSPACE_IMAGE=localhost/opencode-workspace:latest
 PODMAN_NETWORK=opencode-net
@@ -155,19 +156,28 @@ MAX_SLOTS=10
 WORKSPACE_MEMORY=8g
 WORKSPACE_CPUS=4
 WORKSPACE_PIDS_LIMIT=1024
+WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE
 TRAEFIK_DYNAMIC_DIR=$DATA/traefik-dynamic
 TRAEFIK_TLS=false
 TRAEFIK_CERT_RESOLVER=letsencrypt
 ENV
   chmod 600 "$CFG/control-plane.env"
 else
-  # Preserve existing values, but append keys introduced after v4 when missing.
+  # Preserve existing values and append v6 keys if they are absent.
+  grep -q '^CONTROL_PLANE_BIND=' "$CFG/control-plane.env" || echo "CONTROL_PLANE_BIND=$CONTROL_PLANE_BIND" >> "$CFG/control-plane.env"
   grep -q '^CONTROL_PLANE_PORT=' "$CFG/control-plane.env" || echo "CONTROL_PLANE_PORT=$CONTROL_PLANE_PORT" >> "$CFG/control-plane.env"
-  grep -q '^WORKSPACE_PUBLIC_PORT=' "$CFG/control-plane.env" || echo "WORKSPACE_PUBLIC_PORT=$TRAEFIK_PUBLIC_PORT" >> "$CFG/control-plane.env"
   grep -q '^TRAEFIK_ENTRYPOINT=' "$CFG/control-plane.env" || echo "TRAEFIK_ENTRYPOINT=$TRAEFIK_ENTRYPOINT" >> "$CFG/control-plane.env"
+  grep -q '^SESSION_COOKIE_NAME=' "$CFG/control-plane.env" || echo "SESSION_COOKIE_NAME=oc_session" >> "$CFG/control-plane.env"
+  grep -q '^WORKSPACE_COOKIE_NAME=' "$CFG/control-plane.env" || echo "WORKSPACE_COOKIE_NAME=oc_workspace" >> "$CFG/control-plane.env"
+  grep -q '^WORKSPACE_HOST_PORT_BASE=' "$CFG/control-plane.env" || echo "WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE" >> "$CFG/control-plane.env"
+
+  # v6 uses one public gateway URL. Rewrite legacy public URL defaults while
+  # preserving a custom value if the administrator already set one.
+  if grep -q '^CONTROL_PLANE_URL=http://code.example.com' "$CFG/control-plane.env"; then
+    sed -i "s|^CONTROL_PLANE_URL=.*|CONTROL_PLANE_URL=http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT|" "$CFG/control-plane.env"
+  fi
 fi
 
-# Use the effective values from the persistent environment file when upgrading.
 EFFECTIVE_CONTROL_PLANE_PORT=$(sed -n 's/^CONTROL_PLANE_PORT=//p' "$CFG/control-plane.env" | tail -1)
 EFFECTIVE_CONTROL_PLANE_PORT=${EFFECTIVE_CONTROL_PLANE_PORT:-$CONTROL_PLANE_PORT}
 EFFECTIVE_TRAEFIK_ENTRYPOINT=$(sed -n 's/^TRAEFIK_ENTRYPOINT=//p' "$CFG/control-plane.env" | tail -1)
@@ -179,8 +189,10 @@ sed \
   -e "s|__TRAEFIK_ENTRYPOINT__|$EFFECTIVE_TRAEFIK_ENTRYPOINT|g" \
   "$TARGET/traefik/dynamic/control-plane.yml" > "$DATA/traefik-dynamic/control-plane.yml"
 
-# Always recreate the venv so a previous failed install made with an older
-# interpreter cannot be accidentally reused.
+# Remove v5 per-workspace hostname routes. v6 proxies every workspace through
+# the single control-plane/gateway route.
+rm -f "$DATA"/traefik-dynamic/workspace-*.yml
+
 rm -rf "$TARGET/.venv"
 "$PYTHON_BIN" -m venv "$TARGET/.venv"
 "$TARGET/.venv/bin/python" -m pip install --upgrade pip
@@ -196,20 +208,33 @@ sleep 2
 systemctl --user enable --now opencode-control-plane.service
 
 cat <<MSG
-Installed.
+Installed OpenCode Multiuser v6 (single-host gateway).
 
-Control plane (direct): http://127.0.0.1:${EFFECTIVE_CONTROL_PLANE_PORT}
-Traefik HTTP listener: http://127.0.0.1:8080
-Traefik :8443 listener is also HTTP until TRAEFIK_TLS=true is configured.
+Public gateway:
+  http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT
+
+Control plane direct port:
+  ${CONTROL_PLANE_BIND}:${EFFECTIVE_CONTROL_PLANE_PORT}
+  (keep this port blocked from untrusted networks; Traefik is the public entry point)
+
+Dashboard:
+  http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT/dashboard
 
 Persistent config:
   $CFG/control-plane.env
 
 Capacity:
-  MAX_SLOTS controls the maximum simultaneous OpenCode workspace containers.
+  MAX_SLOTS controls simultaneous workspace containers.
   Workspace containers are created on demand; zero are prestarted.
+  Each slot publishes OpenCode only on 127.0.0.1 at
+  WORKSPACE_HOST_PORT_BASE + slot number.
 
 DNS:
-  $BASE_DOMAIN -> this host
-  *.$BASE_DOMAIN -> this host
+  Only $BASE_DOMAIN -> this host is required.
+  Wildcard workspace DNS is no longer used.
+
+Upgrade note:
+  Existing v5 workspace containers are recycled automatically the next time
+  /workspaces/start is called for that project so they acquire the gateway
+  secret and loopback port mapping.
 MSG

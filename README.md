@@ -1,34 +1,43 @@
-# OpenCode Multiuser — rootless Podman + systemd + Traefik
+# Multiuser OpenCode
 
-A production-oriented MVP control plane for assigning isolated OpenCode runtime containers to authenticated users.
+A multi-user OpenCode control plane for **rootless Podman + systemd/Quadlet + Traefik**. v6 removes per-workspace public hostnames and routes every user through one public URL.
 
 ## Architecture
 
 ```text
-Browser
-  |
-  v
-Traefik (rootless Podman, systemd/Quadlet)
-  |-- code.example.com ----------> FastAPI control plane :8010 (configurable)
-  `-- w-<workspace>.example.com --> fresh OpenCode container :4096
-                                         |
-                                         +-- /workspace (persistent per user/project)
-                                         +-- ~/.local/share/opencode (persistent sessions/auth)
-                                         +-- ~/.local/state (persistent state)
-                                         +-- ~/.cache (ephemeral tmpfs)
-                                         `-- ~/.config/opencode (persistent config)
-
-FastAPI control plane
-  |-- PostgreSQL: users, slots, workspace leases
-  |-- rootless Podman CLI: create/destroy runtime containers
-  `-- Traefik file provider: add/remove per-workspace routes
+Browser / API client
+        |
+        | http://code.example.com:8443
+        v
+     Traefik
+        |
+        v
+FastAPI control plane + authenticated gateway
+        |
+        | validate JWT/session + selected workspace
+        | inject OpenCode Basic Auth server-side
+        |
+        +--> 127.0.0.1:41001 --> slot 1 container :4096
+        +--> 127.0.0.1:41002 --> slot 2 container :4096
+        +--> 127.0.0.1:41003 --> slot 3 container :4096
+                     ...
 ```
 
-Traefik never receives the Podman socket. The trusted control plane runs natively as the rootless service user and invokes the rootless `podman` CLI.
+Each workspace container is still isolated and disposable. Its repository, OpenCode data/state/config, and gateway runtime secret live outside the container under the owning user's persistent workspace directory.
 
-## Why capacity slots instead of reusable running containers?
+## What changed from v5
 
-A user's persistent mounts are fixed when a container is created. Reusing the same running container safely would require copying/switching user state and creates more opportunity for cross-user leakage. This implementation therefore pre-caches the image and maintains a fixed number of **slots**. Claiming a slot creates a clean container; releasing it destroys the container. Persistent files live outside the container.
+- No `w-<workspace>.BASE_DOMAIN` hostnames.
+- No wildcard DNS requirement.
+- No per-workspace Traefik dynamic router files.
+- Traefik has one router for `BASE_DOMAIN` and forwards all requests to the FastAPI gateway.
+- A workspace container publishes port 4096 **only on host loopback** using a slot port: `WORKSPACE_HOST_PORT_BASE + slot_id`.
+- The browser uses an HttpOnly `oc_session` authentication cookie and `oc_workspace` selection cookie.
+- `/open/<workspace-id>` validates ownership, selects the workspace, and redirects to `/`.
+- API clients may select a workspace with `X-OpenCode-Workspace: <workspace-id-or-container-name>`; the gateway validates ownership before routing.
+- The client routing header and gateway cookies are stripped before proxying to OpenCode.
+- The gateway injects the container's OpenCode Basic Auth credential server-side.
+- HTTP and WebSocket proxying are both supported.
 
 ## Requirements
 
@@ -37,165 +46,197 @@ A user's persistent mounts are fixed when a container is created. Reusing the sa
 - systemd user services / Quadlet
 - Python 3.11+
 - `openssl`, `rsync`
-- DNS A/AAAA records for both `code.example.com` and `*.code.example.com`
+- delegated `cpu`, `memory`, and `pids` controllers for the rootless user
+- one DNS A/AAAA record: `code.example.com -> host`
 
-Rootless Podman needs subordinate UID/GID ranges. Verify with:
+Check the host before installation:
 
 ```bash
-grep "^$USER:" /etc/subuid /etc/subgid
-podman info --format '{{.Host.CgroupsVersion}}'
+./scripts/check-host.sh
 ```
+
+Rootless user setup, as root:
+
+```bash
+loginctl enable-linger llm_apps
+UID_LLM=$(id -u llm_apps)
+systemctl start user-runtime-dir@${UID_LLM}.service
+systemctl start user@${UID_LLM}.service
+```
+
+If cgroup controllers are not delegated, a typical host override is:
+
+```ini
+# /etc/systemd/system/user@.service.d/delegate.conf
+[Service]
+Delegate=cpu cpuset io memory pids
+```
+
+then:
+
+```bash
+systemctl daemon-reload
+systemctl restart user@$(id -u llm_apps).service
+```
+
+Log in again as the rootless service user afterward.
 
 ## Install
 
-The installer requires Python 3.11 or newer. It automatically prefers `python3.13`, `python3.12`, or `python3.11` over an older default `python3`. You can also select the interpreter explicitly with `PYTHON_BIN`.
-
 ```bash
-export BASE_DOMAIN=code.example.com
-sudo loginctl enable-linger "$USER"
-./scripts/check-host.sh
+unzip opencode-multiuser-fixed-v6.zip
+cd opencode-multiuser-fixed-v6
+
+export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
 ```
 
-The installer now fails early if the systemd user runtime/bus is missing, if the rootless user manager lacks the `cpu`, `memory`, or `pids` cgroup controllers, or if the selected control-plane port is already occupied. The default direct control-plane port is `8010`; override it with `CONTROL_PLANE_PORT=8011` (or another free port).
-
-If your system's default `python3` is older, for example Python 3.9, run:
-
-```bash
-PYTHON_BIN=python3.11 ./scripts/install.sh
-```
-
-A failed older install may have left a Python 3.9 virtual environment under `$HOME/opt/opencode-multiuser/.venv`. The installer now recreates this virtual environment automatically using the selected Python 3.11+ interpreter.
-
-The installer creates:
+By default:
 
 ```text
-~/.config/containers/systemd/
-  opencode.network
-  postgres.container
-  postgres-data.volume
-  traefik.container
-
-~/.config/systemd/user/
-  opencode-control-plane.service
-
-~/.config/opencode-multiuser/
-  control-plane.env
-  postgres.env
-  traefik.yml
-
-~/.local/share/opencode-multiuser/
-  traefik/
-  traefik-dynamic/
-  users/<uuid>/<project>/...
+Traefik public HTTP:         :8080 and :8443
+Gateway/Uvicorn:             :8010
+Workspace loopback base:     41000
+Slot 1 OpenCode backend:     127.0.0.1:41001
+Slot 2 OpenCode backend:     127.0.0.1:41002
+...
 ```
 
-### PostgreSQL storage
+`8443` is plain HTTP until TLS is explicitly configured.
 
-PostgreSQL uses a Podman-managed named volume (`opencode-postgres-data`) rather than a host bind mount. This avoids rootless ownership failures when the PostgreSQL entrypoint changes `/var/lib/postgresql/data` to the internal `postgres` user (UID/GID 999). Inspect it with:
+The gateway binds `CONTROL_PLANE_BIND=0.0.0.0` so the Traefik container can reach `host.containers.internal:8010`. Keep the direct control-plane port blocked from untrusted networks with the host firewall; the intended public entry point is Traefik.
 
-```bash
-podman volume inspect opencode-postgres-data
+## Persistent configuration
+
+The installer writes:
+
+```text
+~/.config/opencode-multiuser/control-plane.env
+~/.config/opencode-multiuser/postgres.env
 ```
 
-Back up PostgreSQL logically with `pg_dump`/`pg_dumpall`; do not depend on the named volume's internal storage path.
-
-## API quick test
-
-Register:
+Important v6 settings:
 
 ```bash
-curl -sS http://127.0.0.1:8010/auth/register \
+CONTROL_PLANE_BIND=0.0.0.0
+CONTROL_PLANE_PORT=8010
+CONTROL_PLANE_URL=http://code-test.example.org:8443
+MAX_SLOTS=10
+WORKSPACE_HOST_PORT_BASE=41000
+SESSION_COOKIE_NAME=oc_session
+WORKSPACE_COOKIE_NAME=oc_workspace
+```
+
+`MAX_SLOTS=10` means at most ten simultaneous workspace containers. It does **not** prestart ten containers.
+
+## Browser test
+
+Open:
+
+```text
+http://code-test.example.org:8443/login
+```
+
+For a fresh installation, create the first account through the API:
+
+```bash
+CP=http://127.0.0.1:8010
+curl -sS -X POST "$CP/auth/register" \
   -H 'content-type: application/json' \
-  -d '{"username":"cahya","password":"replace-with-a-long-password"}'
+  -d '{"username":"cahya","password":"replace-with-a-long-password"}' | jq
 ```
 
-Start a workspace using the returned JWT:
+Then sign in through `/login`. `/dashboard` lets you start, open, and stop workspaces. Clicking **Open** sets the selected workspace cookie and sends the browser through the gateway to OpenCode.
+
+## API test
+
+Login and obtain a bearer token:
 
 ```bash
-TOKEN='...'
-curl -sS http://127.0.0.1:8010/workspaces/start \
-  -H "authorization: Bearer $TOKEN" \
+TOKEN=$(
+  curl -sS -X POST "$CP/auth/login" \
+    -H 'content-type: application/json' \
+    -d '{"username":"cahya","password":"replace-with-a-long-password"}' |
+  jq -r .access_token
+)
+```
+
+Start a workspace:
+
+```bash
+curl -sS -X POST "$CP/workspaces/start" \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'content-type: application/json' \
-  -d '{"project_slug":"rag-project"}'
+  -d '{"project_slug":"rag-project"}' | jq
 ```
 
-Stop it:
+The response now contains a URL such as:
+
+```text
+http://code-test.example.org:8443/open/<workspace-id>
+```
+
+For an API request directly through the gateway, select the workspace with a validated header:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8010/workspaces/<workspace-id>/stop \
-  -H "authorization: Bearer $TOKEN"
+curl -sS \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-OpenCode-Workspace: <workspace-id-or-container-name>" \
+  http://code-test.example.org:8443/global/health | jq
 ```
 
+The gateway verifies that the workspace is running and belongs to the authenticated user. It does not trust the header as an unrestricted container destination.
 
-## systemd user manager and cgroup delegation
+## Workspace storage
 
-This deployment launches rootless Podman containers from a systemd user service. The service is packaged with `Delegate=yes`, but the parent `user@<UID>.service` must also receive the cgroup controllers needed by `--cpus`, `--memory`, and `--pids-limit`. `scripts/install.sh` checks this before building images. If the check fails, configure `/etc/systemd/system/user@.service.d/delegate.conf` as root as instructed by the installer, restart the numeric `user@<UID>.service`, then log in again.
+```text
+~/.local/share/opencode-multiuser/users/<user-id>/<project>/
+├── workspace/
+├── opencode-data/
+├── opencode-state/
+├── opencode-config/
+└── runtime-secret       # mode 0600; OpenCode Basic Auth secret
+```
 
-The rootless runtime directory `/run/user/<UID>` and its `bus` socket must be created by systemd/logind; do not create them manually. Enable lingering for the service account so the user manager survives logout.
+The OpenCode cache remains ephemeral in tmpfs.
 
-## HTTP test mode
+## Upgrade from v5
 
-The v5 defaults match the current test deployment: TLS is disabled, workspace URLs use `http`, and Traefik listens on 8080/8443. Port 8443 is therefore plain HTTP until `TRAEFIK_TLS=true` and certificates are configured. Internal Traefik-to-OpenCode traffic remains HTTP even after external TLS is enabled.
+v6 preserves PostgreSQL and the existing user/project storage. The installer removes old `workspace-*.yml` Traefik route files.
 
-## Rootless ports 80/443
+Existing v5 workspace containers lack the v6 loopback port mapping and `runtime-secret`. They appear in the dashboard with an **Upgrade workspace** action instead of **Open**. That action calls `/workspaces/start`, which automatically recycles the old container and recreates it in v6 gateway mode.
 
-The sample intentionally uses 8080/8443. Rootless processes normally cannot bind privileged ports. If your security policy allows it, lower the unprivileged-port threshold on the host and then change the Quadlet/static Traefik ports to 80/443. Alternatively keep Traefik rootless on high ports and forward 80/443 at the host/network edge.
+After upgrading, only this DNS record is required:
 
-## TLS
+```text
+code-test.example.org -> host
+```
 
-The example ships with TLS disabled for generated workspace routes (`TRAEFIK_TLS=false`) and `WORKSPACE_SCHEME=http` so the initial deployment is easy to inspect. For production:
+The old wildcard `*.code-test.example.org` record may remain, but v6 does not use it.
 
-1. Configure 80/443 reachability.
-2. Configure Traefik ACME in `traefik.yml` or install your organization's certificate.
-3. Set `TRAEFIK_TLS=true` and, for ACME, `TRAEFIK_CERT_RESOLVER=letsencrypt`.
-4. Set `WORKSPACE_SCHEME=https`.
+## Security notes
 
-A wildcard certificate for `*.code.example.com` is ideal for workspace subdomains.
+- The browser never receives the OpenCode Basic Auth password.
+- Workspace backend ports bind only to `127.0.0.1`.
+- Workspace selection is authorization-checked against the logged-in user.
+- Client `Authorization` is replaced with OpenCode Basic Auth before forwarding.
+- Gateway session/workspace cookies are stripped before forwarding to OpenCode.
+- Containers remain read-only except for explicit persistent mounts and tmpfs paths.
+- CPU, memory, PID, capability, and user-namespace restrictions remain enabled.
+- Keep port `8010` blocked externally because it bypasses Traefik as an ingress layer.
+- Enable HTTPS before sending credentials/source code over an untrusted network.
 
-## Important security notes
+## Useful checks
 
-- Containers are destroyed before slots are reused.
-- Each user/project receives separate persistent workspace, OpenCode data, and config directories.
-- Runtime containers use `--read-only`, `no-new-privileges`, drop all Linux capabilities, have resource limits, and use writable mounts only for required data.
-- Do **not** mount host SSH keys directly. Implement a Git credential broker or short-lived deploy tokens.
-- Do **not** expose the Podman API socket to OpenCode containers or Traefik.
-- The control-plane API should be behind SSO/OIDC in production. Local username/password is only an MVP.
-- Add outbound network policy if source code or secrets must not reach arbitrary Internet destinations.
+```bash
+systemctl --user status postgres.service traefik.service opencode-control-plane.service
+podman ps
+curl http://127.0.0.1:8010/healthz
+ss -ltn | grep -E ':(8010|8080|8443|4100[0-9])\\b'
+```
 
-## Known MVP limitation: OpenCode Basic Auth
+Expected health response:
 
-Each runtime receives a random `OPENCODE_SERVER_PASSWORD`. The current MVP does not expose that password to the browser. The production UI should proxy OpenCode traffic through the control plane (or an auth sidecar) and inject Basic Auth server-side. This avoids giving the OpenCode runtime credential to the user and is the recommended next implementation step.
-
-## Recommended next steps
-
-1. OIDC/Keycloak/Entra ID instead of local passwords.
-2. Authenticated WebSocket/HTTP reverse proxy that injects OpenCode Basic Auth.
-3. Project/repository table + GitLab/GitHub clone flow.
-4. Automatic idle timeout and lease recovery after host reboot.
-5. Admin page for slots, users, active workspaces, quotas and audit events.
-6. Per-project container images/devcontainer support.
-7. Network egress restrictions and secret broker.
-
-## Container UID/GID
-
-The workspace image uses UID/GID `10001` for the `opencode` user. This avoids the UID 1000 collision with the built-in `node` user in the official Node image. The runtime uses `--userns keep-id:uid=10001,gid=10001` so the rootless host service account maps to that user inside each workspace container.
-
-The OpenCode npm package is installed with `--allow-scripts=opencode-ai` because its postinstall script is required by current npm versions.
-
-
-## Writable XDG directories with read-only runtime rootfs
-
-Workspace containers keep the image root filesystem read-only. OpenCode also writes to XDG state and cache directories, so each runtime mounts a persistent per-user/project `opencode-state` directory at `~/.local/state` and an ephemeral tmpfs at `~/.cache`. The control plane explicitly sets `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`, and `XDG_CONFIG_HOME`.
-
-## Changes in v5
-
-- `CONTROL_PLANE_PORT` is configurable (default `8010`) instead of hard-coded to 8000.
-- The packaged control-plane service has `Delegate=yes` and explicit user-runtime environment.
-- Installation preflights the systemd user bus and required cgroup-v2 controllers.
-- The installer detects a busy control-plane port before starting Uvicorn.
-- PostgreSQL uses the named `postgres-data.volume` definition from v3.
-- Workspace runtime includes persistent XDG data/state/config mounts and ephemeral cache/tmpfs from v4.
-- HTTP is the default public scheme while TLS is disabled, and workspace URLs include the non-standard public port.
-- OpenCode installation is smoke-tested with `opencode --version` during the image build.
-- Podman stderr is preserved in API errors for easier diagnosis.
+```json
+{"ok":true,"mode":"single-host-gateway"}
+```

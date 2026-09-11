@@ -6,16 +6,19 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     base_domain: str = "code.example.com"
-    control_plane_url: str = "http://127.0.0.1:8010"
+    # Public URL reached through Traefik. This is also the single URL used for
+    # opening workspaces; no per-workspace hostnames are required.
+    control_plane_url: str = "http://code.example.com:8443"
+    control_plane_bind: str = "0.0.0.0"
     control_plane_port: int = 8010
-    workspace_scheme: str = "http"
-    workspace_public_port: int = 8443
     traefik_entrypoint: str = "websecure"
 
     database_url: str = "sqlite:///./opencode-multiuser.db"
     jwt_secret: str = "development-only-change-me"
     jwt_ttl_minutes: int = 480
     allow_registration: bool = True
+    session_cookie_name: str = "oc_session"
+    workspace_cookie_name: str = "oc_workspace"
 
     podman_bin: str = "/usr/bin/podman"
     workspace_image: str = "localhost/opencode-workspace:latest"
@@ -25,6 +28,9 @@ class Settings(BaseSettings):
     workspace_memory: str = "8g"
     workspace_cpus: float = 4.0
     workspace_pids_limit: int = 1024
+    # Slot N publishes container :4096 only on host loopback at base + N.
+    # Example: base 41000, slot 6 -> 127.0.0.1:41006.
+    workspace_host_port_base: int = 41000
 
     traefik_dynamic_dir: str = "~/.local/share/opencode-multiuser/traefik-dynamic"
     traefik_tls: bool = False
@@ -38,6 +44,10 @@ class Settings(BaseSettings):
     @property
     def expanded_traefik_dynamic_dir(self) -> Path:
         return Path(self.traefik_dynamic_dir.replace("%h", str(Path.home()))).expanduser().resolve()
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.control_plane_url.lower().startswith("https://")
 
 
 settings = Settings()
