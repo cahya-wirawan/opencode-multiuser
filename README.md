@@ -1,5 +1,22 @@
-# OpenCode Multiuser v6.6 — OIDC + local authentication
+# OpenCode Multiuser v6.7 — Admin user management
 
+## v6.7 administrator console
+
+v6.7 adds an admin-only **User management** console at `/admin/users` on top of the v6.6 OIDC/local-auth role model. The backend enforces administrator authorization independently of the UI.
+
+Highlights:
+
+- Admin navigation is shown only to administrators.
+- Search/filter users by username, display name, email, role, and enabled/disabled state.
+- View Local vs OIDC authentication source, created time, last login, role, account status, and active workspace/slot information.
+- Promote developers to admin or demote admins with safeguards.
+- Enable/disable accounts; disabling a user also stops their active workspaces and frees their slots.
+- Stop another user's active workspaces without disabling the account.
+- Reset passwords for local accounts. OIDC credentials remain managed by the identity provider.
+- Delete local accounts only when they have no workspace history. OIDC accounts are disabled instead of deleted.
+- The current administrator cannot disable, demote, or delete their own account.
+- The last enabled administrator cannot be demoted, disabled, or deleted.
+- Existing databases are migrated automatically with a nullable `last_login_at` field; no manual SQL is required.
 
 ## v6.6 authentication and registration
 
@@ -18,7 +35,7 @@ Highlights:
 - upgrades assign the oldest existing local account `admin` and existing remaining accounts `developer`
 - local login/registration can be disabled after OIDC is verified
 
-The current `admin`/`developer` role is persisted and shown in the portal. It establishes the RBAC model for future administrative functions; workspace ownership remains per-user in v6.6.
+The `admin`/`developer` role is persisted and shown in the portal. v6.7 uses it to protect the administrator console and management APIs; workspace ownership remains per-user.
 
 **Bootstrap security:** the first account is intentionally privileged. Keep a fresh portal on a trusted/internal network during bootstrap. After creating the intended local accounts, set `ALLOW_REGISTRATION=false`; for SSO-only deployments also set `LOCAL_AUTH_ENABLED=false` only after OIDC has been verified.
 
@@ -156,8 +173,8 @@ Log in again as the rootless service user afterward.
 ## Install
 
 ```bash
-unzip opencode-multiuser-fixed-v6.6.zip
-cd opencode-multiuser-fixed-v6.6
+unzip opencode-multiuser-fixed-v6.7.zip
+cd opencode-multiuser-fixed-v6.7
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh

@@ -282,7 +282,7 @@ systemctl --user enable opencode-control-plane.service
 systemctl --user restart opencode-control-plane.service
 
 cat <<MSG
-Installed OpenCode Multiuser v6.6 (generic OIDC + local auth + role-aware registration).
+Installed OpenCode Multiuser v6.7 (OIDC/local auth + admin user management).
 
 Public gateway:
   http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT

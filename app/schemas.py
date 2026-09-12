@@ -28,3 +28,15 @@ class WorkspaceResponse(BaseModel):
     url: str | None = None
     slot_id: int | None = None
     container_name: str | None = None
+
+
+class AdminRoleUpdate(BaseModel):
+    role: str = Field(pattern=r"^(admin|developer)$")
+
+
+class AdminStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class AdminPasswordReset(BaseModel):
+    password: str = Field(min_length=12, max_length=256)

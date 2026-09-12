@@ -32,6 +32,7 @@ def migrate_user_auth_schema() -> None:
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS oidc_subject VARCHAR(512)",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(320)",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(160)",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ",
                 "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL",
             ]
             for statement in statements:
@@ -45,6 +46,7 @@ def migrate_user_auth_schema() -> None:
                 "oidc_subject": "VARCHAR(512)",
                 "email": "VARCHAR(320)",
                 "display_name": "VARCHAR(160)",
+                "last_login_at": "TIMESTAMP",
             }
             for name, sql_type in additions.items():
                 if name not in existing:

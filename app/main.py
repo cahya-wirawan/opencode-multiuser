@@ -7,7 +7,7 @@ from html import escape
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocket, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,7 @@ from .gateway import proxy_http, proxy_websocket, selected_workspace_for_request
 from .models import Slot, User, UserRole, Workspace, WorkspaceStatus
 from .migrations import drop_legacy_workspace_constraint, ensure_active_workspace_index, migrate_user_auth_schema
 from .portal import PORTAL_CSS, PORTAL_JS
-from .ui import APP_CSS, dashboard_page_html, login_page_html, registration_page_html
+from .ui import APP_CSS, admin_users_page_html, dashboard_page_html, login_page_html, registration_page_html
 from .runtime import (
     container_running,
     container_has_workspace_port,
@@ -29,8 +29,11 @@ from .runtime import (
     read_workspace_stop_reason,
     write_workspace_stop_reason,
 )
-from .schemas import LoginRequest, RegisterRequest, TokenResponse, WorkspaceResponse, WorkspaceStartRequest
-from .security import current_user, hash_password, issue_token, load_user_from_token, role_for_new_user, verify_password
+from .schemas import (
+    AdminPasswordReset, AdminRoleUpdate, AdminStatusUpdate, LoginRequest, RegisterRequest,
+    TokenResponse, WorkspaceResponse, WorkspaceStartRequest,
+)
+from .security import current_user, hash_password, issue_token, load_user_from_token, require_admin, role_for_new_user, verify_password
 from .traefik import cleanup_legacy_workspace_routes, workspace_open_url
 from .oidc import oidc_client, provision_oidc_user
 
@@ -161,7 +164,7 @@ def _dedupe_active_workspaces() -> int:
     return released
 
 
-def _stop_user_workspaces(user_id: str, db: Session) -> int:
+def _stop_user_workspaces(user_id: str, db: Session, reason: str = "logout") -> int:
     rows = db.scalars(
         select(Workspace).where(
             Workspace.user_id == user_id,
@@ -169,8 +172,67 @@ def _stop_user_workspaces(user_id: str, db: Session) -> int:
         )
     ).all()
     for ws in rows:
-        _release_workspace(ws, db, reason="logout")
+        _release_workspace(ws, db, reason=reason)
     return len(rows)
+
+
+
+
+def _lock_users_for_admin_mutation(db: Session) -> None:
+    # Serialize administrator role/status/delete changes in PostgreSQL so two
+    # concurrent requests cannot both conclude that another enabled admin remains.
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(text("LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE"))
+
+
+def _enabled_admin_count(db: Session) -> int:
+    return int(db.scalar(select(func.count(User.id)).where(User.role == UserRole.ADMIN.value, User.is_active.is_(True))) or 0)
+
+
+def _admin_user_payload(target: User, admin: User, db: Session) -> dict:
+    active_states = [WorkspaceStatus.STARTING, WorkspaceStatus.RUNNING, WorkspaceStatus.STOPPING]
+    active_workspaces = db.scalars(
+        select(Workspace)
+        .where(Workspace.user_id == target.id, Workspace.status.in_(active_states))
+        .order_by(Workspace.created_at.desc())
+    ).all()
+    history_count = int(db.scalar(select(func.count(Workspace.id)).where(Workspace.user_id == target.id)) or 0)
+    return {
+        "id": target.id,
+        "username": target.username,
+        "display_name": target.display_name,
+        "email": target.email,
+        "role": target.role,
+        "auth_provider": target.auth_provider,
+        "is_active": target.is_active,
+        "created_at": target.created_at.isoformat() if target.created_at else None,
+        "last_login_at": target.last_login_at.isoformat() if target.last_login_at else None,
+        "is_self": target.id == admin.id,
+        "workspace_history_count": history_count,
+        "can_delete": target.auth_provider == "local" and target.id != admin.id and history_count == 0,
+        "active_workspaces": [
+            {
+                "id": ws.id,
+                "project_slug": ws.project_slug,
+                "status": ws.status.value,
+                "slot_id": ws.slot_id,
+                "container_name": ws.container_name,
+            }
+            for ws in active_workspaces
+        ],
+    }
+
+
+def _admin_target(user_id: str, db: Session) -> User:
+    target = db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    return target
+
+
+def _protect_last_admin(target: User, db: Session, removing_admin_access: bool) -> None:
+    if removing_admin_access and target.role == UserRole.ADMIN.value and target.is_active and _enabled_admin_count(db) <= 1:
+        raise HTTPException(status_code=409, detail="The last enabled administrator cannot be demoted, disabled, or deleted")
 
 
 def _reap_idle_workspaces() -> int:
@@ -243,7 +305,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.6.6",
+    version="0.6.7",
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
@@ -276,6 +338,7 @@ def register(req: RegisterRequest, response: Response, db: Session = Depends(get
         password_hash=hash_password(req.password),
         role=role,
         auth_provider="local",
+        last_login_at=datetime.now(timezone.utc),
     )
     db.add(user)
     try:
@@ -302,6 +365,9 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
     )
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
     token = issue_token(user)
     _set_session_cookie(response, token)
     return TokenResponse(access_token=token, role=user.role)
@@ -321,6 +387,9 @@ async def oidc_callback(request: Request, db: Session = Depends(get_db)):
         if not userinfo:
             raise RuntimeError("OIDC token response did not contain userinfo")
         user = provision_oidc_user(db, userinfo)
+        user.last_login_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(user)
     except HTTPException as exc:
         logger.warning("OIDC authentication rejected: %s", exc.detail)
         return RedirectResponse("/login?error=oidc", status_code=303)
@@ -419,6 +488,111 @@ def dashboard(
     if reason == "idle":
         response.delete_cookie(settings.workspace_cookie_name, path="/")
     return response
+
+
+@app.get("/admin/users", response_class=HTMLResponse)
+def admin_users_page(admin: User = Depends(require_admin)):
+    return HTMLResponse(admin_users_page_html(admin.username, admin.display_name))
+
+
+@app.get("/api/admin/users")
+def admin_list_users(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    users = db.scalars(select(User).order_by(User.created_at.asc(), User.username.asc())).all()
+    payload = [_admin_user_payload(user, admin, db) for user in users]
+    return {
+        "users": payload,
+        "summary": {
+            "total_users": len(payload),
+            "enabled_admins": sum(1 for user in users if user.role == UserRole.ADMIN.value and user.is_active),
+            "active_users": sum(1 for user in users if user.is_active),
+            "running_workspaces": sum(len(item["active_workspaces"]) for item in payload),
+        },
+    }
+
+
+@app.patch("/api/admin/users/{user_id}/role")
+def admin_change_role(
+    user_id: str,
+    req: AdminRoleUpdate,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _lock_users_for_admin_mutation(db)
+    target = _admin_target(user_id, db)
+    if target.id == admin.id and req.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=409, detail="You cannot demote your own administrator account")
+    _protect_last_admin(target, db, req.role != UserRole.ADMIN.value)
+    target.role = req.role
+    db.commit()
+    db.refresh(target)
+    return _admin_user_payload(target, admin, db)
+
+
+@app.patch("/api/admin/users/{user_id}/status")
+def admin_change_status(
+    user_id: str,
+    req: AdminStatusUpdate,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _lock_users_for_admin_mutation(db)
+    target = _admin_target(user_id, db)
+    if target.id == admin.id and not req.is_active:
+        raise HTTPException(status_code=409, detail="You cannot disable your own account")
+    _protect_last_admin(target, db, not req.is_active)
+    if target.is_active and not req.is_active:
+        _stop_user_workspaces(target.id, db, reason="admin")
+    target.is_active = req.is_active
+    db.commit()
+    db.refresh(target)
+    return _admin_user_payload(target, admin, db)
+
+
+@app.post("/api/admin/users/{user_id}/stop-workspaces")
+def admin_stop_user_workspaces(
+    user_id: str,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    target = _admin_target(user_id, db)
+    stopped = _stop_user_workspaces(target.id, db, reason="admin")
+    return {"ok": True, "stopped": stopped}
+
+
+@app.post("/api/admin/users/{user_id}/password")
+def admin_reset_password(
+    user_id: str,
+    req: AdminPasswordReset,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    target = _admin_target(user_id, db)
+    if target.auth_provider != "local":
+        raise HTTPException(status_code=409, detail="Password reset is available only for local accounts")
+    target.password_hash = hash_password(req.password)
+    db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(
+    user_id: str,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _lock_users_for_admin_mutation(db)
+    target = _admin_target(user_id, db)
+    if target.id == admin.id:
+        raise HTTPException(status_code=409, detail="You cannot delete your own account")
+    if target.auth_provider != "local":
+        raise HTTPException(status_code=409, detail="OIDC accounts should be disabled rather than deleted")
+    _protect_last_admin(target, db, target.role == UserRole.ADMIN.value)
+    history_count = int(db.scalar(select(func.count(Workspace.id)).where(Workspace.user_id == target.id)) or 0)
+    if history_count:
+        raise HTTPException(status_code=409, detail="Users with workspace history cannot be deleted; disable the account instead")
+    db.delete(target)
+    db.commit()
+    return Response(status_code=204)
 
 
 @app.get("/workspaces", response_model=list[WorkspaceResponse])

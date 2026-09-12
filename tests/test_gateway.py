@@ -215,3 +215,62 @@ def test_oidc_provisioning_is_stable_and_uses_subject(monkeypatch):
         assert user1.auth_provider == 'oidc'
         assert user1.password_hash is None
         assert user1.email == 'alice@example.com'
+
+
+def test_dashboard_shows_admin_navigation_only_for_admin():
+    from app.ui import dashboard_page_html
+    admin_html = dashboard_page_html('root', '', 10, 10, 30, role='admin')
+    developer_html = dashboard_page_html('alice', '', 10, 10, 30, role='developer')
+    assert 'href="/admin/users"' in admin_html
+    assert 'href="/admin/users"' not in developer_html
+
+
+def test_admin_users_ui_has_management_controls():
+    from app.ui import admin_users_page_html
+    html = admin_users_page_html('root', 'Root Admin')
+    assert 'User management' in html
+    assert '/api/admin/users' in html
+    assert 'Reset password' in html
+    assert 'Stop workspaces' in html
+    assert 'Last login' in html
+    assert 'All roles' in html
+
+
+def test_require_admin_rejects_developer():
+    from fastapi import HTTPException
+    from app.models import User
+    from app.security import require_admin
+    admin = User(username='root', password_hash='x', role='admin', auth_provider='local')
+    developer = User(username='alice', password_hash='x', role='developer', auth_provider='local')
+    assert require_admin(admin) is admin
+    try:
+        require_admin(developer)
+        assert False, 'developer should not pass require_admin'
+    except HTTPException as exc:
+        assert exc.status_code == 403
+
+
+def test_last_enabled_admin_is_protected():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.db import Base
+    from app.models import User
+    from app.main import _protect_last_admin
+    from fastapi import HTTPException
+
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        root = User(username='root', password_hash='x', role='admin', auth_provider='local', is_active=True)
+        db.add(root)
+        db.commit()
+        try:
+            _protect_last_admin(root, db, True)
+            assert False, 'last admin should be protected'
+        except HTTPException as exc:
+            assert exc.status_code == 409
+        second = User(username='second', password_hash='x', role='admin', auth_provider='local', is_active=True)
+        db.add(second)
+        db.commit()
+        _protect_last_admin(root, db, True)
