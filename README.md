@@ -1,5 +1,16 @@
 # OpenCode Multiuser v6.4 — single-host gateway
 
+## v6.4.3 database constraint fix
+
+v6.4.3 automatically migrates the legacy `uq_activeish_workspace` PostgreSQL constraint.
+Older versions made `(user_id, project_slug, status)` unique, which incorrectly prevented
+more than one historical `STOPPED` row for the same project and could crash startup
+reconciliation with `UniqueViolation`. The migration drops that constraint and replaces it
+with a partial unique index that applies only to `STARTING`, `RUNNING`, and `STOPPING`.
+No manual SQL migration is required. Historical stopped/error rows remain intact, while the
+dashboard shows only the newest row for each project.
+
+
 A multi-user OpenCode control plane for **rootless Podman + systemd/Quadlet + Traefik**. v6.4 routes every user through one public URL, waits for OpenCode readiness before opening a workspace, and automatically reclaims unused slots.
 
 ## v6.4 management widget

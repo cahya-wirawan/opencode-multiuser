@@ -14,6 +14,7 @@ from .config import settings
 from .db import Base, SessionLocal, engine, get_db
 from .gateway import proxy_http, proxy_websocket, selected_workspace_for_request
 from .models import Slot, User, Workspace, WorkspaceStatus
+from .migrations import drop_legacy_workspace_constraint, ensure_active_workspace_index
 from .portal import PORTAL_CSS, PORTAL_JS
 from .runtime import (
     container_running,
@@ -132,6 +133,31 @@ def _reconcile_workspace_runtimes() -> int:
             reconciled += 1
     return reconciled
 
+def _dedupe_active_workspaces() -> int:
+    """Collapse any legacy duplicate active leases before creating the partial index."""
+    active = (WorkspaceStatus.STARTING, WorkspaceStatus.RUNNING, WorkspaceStatus.STOPPING)
+    released = 0
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(Workspace)
+            .where(Workspace.status.in_(active))
+            .order_by(Workspace.user_id, Workspace.project_slug, Workspace.created_at.desc())
+        ).all()
+        keep: set[tuple[str, str]] = set()
+        for ws in rows:
+            key = (ws.user_id, ws.project_slug)
+            if key not in keep:
+                keep.add(key)
+                continue
+            logger.warning(
+                "Recycling duplicate active workspace %s (%s) for user %s",
+                ws.id, ws.project_slug, ws.user_id,
+            )
+            _release_workspace(ws, db, reason="recycle")
+            released += 1
+    return released
+
+
 def _stop_user_workspaces(user_id: str, db: Session) -> int:
     rows = db.scalars(
         select(Workspace).where(
@@ -185,6 +211,10 @@ async def _idle_reaper_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # v6.4.3 fixes the old (user_id, project_slug, status) uniqueness rule.
+    # Drop it before create/reconciliation. ALTER TABLE IF EXISTS makes this
+    # safe for a completely fresh PostgreSQL installation as well.
+    drop_legacy_workspace_constraint()
     Base.metadata.create_all(engine)
     _seed_slots()
     settings.expanded_data_root.mkdir(parents=True, exist_ok=True)
@@ -193,6 +223,8 @@ async def lifespan(app: FastAPI):
     # Traefik files must not remain active after an upgrade.
     cleanup_legacy_workspace_routes()
     _reconcile_workspace_runtimes()
+    _dedupe_active_workspaces()
+    ensure_active_workspace_index()
     reaper_task = None
     if settings.workspace_idle_timeout_minutes > 0:
         reaper_task = asyncio.create_task(_idle_reaper_loop(), name="workspace-idle-reaper")
@@ -206,7 +238,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.3.4.2",
+    version="0.3.4.3",
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
@@ -320,8 +352,18 @@ refresh().catch(e=>document.getElementById('list').textContent=e.message);
 
 @app.get("/workspaces", response_model=list[WorkspaceResponse])
 def list_workspaces(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    rows = db.scalars(select(Workspace).where(Workspace.user_id == user.id).order_by(Workspace.created_at.desc())).all()
-    return [_workspace_response(x) for x in rows]
+    rows = db.scalars(
+        select(Workspace)
+        .where(Workspace.user_id == user.id)
+        .order_by(Workspace.created_at.desc())
+    ).all()
+    # Older releases could leave multiple terminal rows for the same project.
+    # Keep that history in PostgreSQL but show only the newest project row in
+    # the user-facing API/dashboard.
+    newest_by_project: dict[str, Workspace] = {}
+    for ws in rows:
+        newest_by_project.setdefault(ws.project_slug, ws)
+    return [_workspace_response(x) for x in newest_by_project.values()]
 
 
 @app.post("/workspaces/start", response_model=WorkspaceResponse)

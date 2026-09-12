@@ -1,7 +1,7 @@
 import enum
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -36,7 +36,18 @@ class Slot(Base):
 
 class Workspace(Base):
     __tablename__ = "workspaces"
-    __table_args__ = (UniqueConstraint("user_id", "project_slug", "status", name="uq_activeish_workspace"),)
+    # Only active lifecycle states must be unique. Historical STOPPED/ERROR rows
+    # are intentionally allowed so runtime reconciliation can preserve history.
+    __table_args__ = (
+        Index(
+            "uq_active_workspace",
+            "user_id",
+            "project_slug",
+            unique=True,
+            postgresql_where=text("status IN ('STARTING','RUNNING','STOPPING')"),
+            sqlite_where=text("status IN ('STARTING','RUNNING','STOPPING')"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)

@@ -103,3 +103,13 @@ def test_forward_headers_forces_identity_encoding(monkeypatch):
     monkeypatch.setattr(gateway.settings, "workspace_cookie_name", "oc_workspace")
     headers = gateway._forward_headers([("Accept-Encoding", "gzip, br")], "runtime-secret")
     assert headers["accept-encoding"] == "identity"
+
+
+def test_workspace_model_uses_partial_active_index():
+    from app.models import Workspace
+    indexes = {idx.name: idx for idx in Workspace.__table__.indexes}
+    idx = indexes["uq_active_workspace"]
+    assert idx.unique is True
+    assert [col.name for col in idx.columns] == ["user_id", "project_slug"]
+    assert "STOPPED" not in str(idx.dialect_options["postgresql"]["where"])
+    assert "RUNNING" in str(idx.dialect_options["postgresql"]["where"])
