@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     workspace_memory: str = "8g"
     workspace_cpus: float = 4.0
     workspace_pids_limit: int = 1024
+    # Wait for OpenCode /global/health before reporting a new workspace as ready.
+    workspace_ready_timeout_seconds: int = 45
+    workspace_ready_poll_interval_seconds: float = 0.5
+    # Reclaim unused capacity automatically. Set idle timeout to 0 to disable.
+    workspace_idle_timeout_minutes: int = 30
+    workspace_reaper_interval_seconds: int = 60
+    stop_workspaces_on_logout: bool = True
     # Slot N publishes container :4096 only on host loopback at base + N.
     # Example: base 41000, slot 6 -> 127.0.0.1:41006.
     workspace_host_port_base: int = 41000

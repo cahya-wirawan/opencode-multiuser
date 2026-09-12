@@ -8,11 +8,12 @@ from fastapi import HTTPException, Request, WebSocket, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
-from starlette.responses import StreamingResponse
+from starlette.responses import Response, StreamingResponse
 
 from .config import settings
 from .models import User, Workspace, WorkspaceStatus
-from .runtime import read_workspace_secret, workspace_host_port
+from .portal import inject_portal_widget
+from .runtime import read_workspace_secret, read_workspace_stop_reason, touch_workspace_activity, workspace_host_port
 from .security import load_user_from_token
 
 _HOP_BY_HOP = {
@@ -66,6 +67,7 @@ def _forward_headers(headers: Iterable[tuple[str, str]], password: str) -> dict[
     if cleaned_cookie:
         result["cookie"] = cleaned_cookie
     result["authorization"] = _basic_auth(password)
+    result["accept-encoding"] = "identity"
     return result
 
 
@@ -129,6 +131,7 @@ def _backend_ws_url(ws: Workspace, websocket: WebSocket) -> str:
 
 async def proxy_http(request: Request, user: User, db: Session):
     ws = selected_workspace_for_request(request, user, db)
+    touch_workspace_activity(user.id, ws.project_slug)
     password = read_workspace_secret(user.id, ws.project_slug)
     target = _backend_http_url(ws, request)
     headers = _forward_headers(request.headers.items(), password)
@@ -142,17 +145,41 @@ async def proxy_http(request: Request, user: User, db: Session):
         )
     except httpx.HTTPError as exc:
         await client.aclose()
-        raise HTTPException(status_code=502, detail=f"OpenCode backend unavailable: {exc}") from exc
+        detail = str(exc).strip() or "connection failed"
+        raise HTTPException(
+            status_code=502,
+            detail=f"OpenCode backend unavailable: {type(exc).__name__}: {detail}",
+        ) from exc
 
-    async def close_upstream() -> None:
-        await upstream.aclose()
-        await client.aclose()
+    content_type = upstream.headers.get("content-type", "").lower()
+    inject_widget = upstream.status_code == 200 and "text/html" in content_type
 
-    response = StreamingResponse(
-        upstream.aiter_raw(),
-        status_code=upstream.status_code,
-        background=BackgroundTask(close_upstream),
-    )
+    if inject_widget:
+        try:
+            payload = await upstream.aread()
+            charset = upstream.encoding or "utf-8"
+            html = payload.decode(charset, errors="replace")
+            body_bytes = inject_portal_widget(html, ws.project_slug).encode(charset, errors="replace")
+        finally:
+            await upstream.aclose()
+            await client.aclose()
+        response = Response(content=body_bytes, status_code=upstream.status_code)
+    else:
+        async def stream_upstream():
+            async for chunk in upstream.aiter_raw():
+                touch_workspace_activity(user.id, ws.project_slug)
+                yield chunk
+
+        async def close_upstream() -> None:
+            await upstream.aclose()
+            await client.aclose()
+
+        response = StreamingResponse(
+            stream_upstream(),
+            status_code=upstream.status_code,
+            background=BackgroundTask(close_upstream),
+        )
+
     # Preserve duplicate response headers such as Set-Cookie. Rewrite an
     # absolute loopback redirect, if OpenCode emits one, back to the public URL.
     raw_headers: list[tuple[bytes, bytes]] = []
@@ -160,6 +187,12 @@ async def proxy_http(request: Request, user: User, db: Session):
     for key, value in upstream.headers.raw:
         lower = key.decode("latin-1").lower()
         if lower in _HOP_BY_HOP or lower == "content-length":
+            continue
+        # HTML bodies are decoded and rewritten by the gateway, so an upstream
+        # content-encoding can no longer be forwarded verbatim. Preserve CSP:
+        # the widget remains functional without JavaScript because its core
+        # controls are ordinary links/forms.
+        if inject_widget and lower == "content-encoding":
             continue
         if lower == "location":
             text = value.decode("latin-1")
@@ -181,7 +214,27 @@ async def proxy_websocket(websocket: WebSocket, db: Session) -> None:
         return
 
     try:
-        ws = selected_workspace_for_websocket(websocket, user, db)
+        try:
+            ws = selected_workspace_for_websocket(websocket, user, db)
+        except HTTPException:
+            selector = websocket.headers.get("x-opencode-workspace") or websocket.cookies.get(settings.workspace_cookie_name)
+            stopped = None
+            if selector:
+                stopped = db.scalar(
+                    select(Workspace).where(
+                        Workspace.id == selector,
+                        Workspace.user_id == user.id,
+                        Workspace.status == WorkspaceStatus.STOPPED,
+                    )
+                )
+            if stopped and read_workspace_stop_reason(user.id, stopped.project_slug) == "idle":
+                await websocket.close(
+                    code=4409,
+                    reason="Workspace stopped due to inactivity; return to /dashboard",
+                )
+                return
+            raise
+        touch_workspace_activity(user.id, ws.project_slug)
         password = read_workspace_secret(user.id, ws.project_slug)
         target = _backend_ws_url(ws, websocket)
         upstream_headers = {"Authorization": _basic_auth(password)}
@@ -202,12 +255,15 @@ async def proxy_websocket(websocket: WebSocket, db: Session) -> None:
                     if kind == "websocket.disconnect":
                         break
                     if message.get("text") is not None:
+                        touch_workspace_activity(user.id, ws.project_slug)
                         await upstream.send(message["text"])
                     elif message.get("bytes") is not None:
+                        touch_workspace_activity(user.id, ws.project_slug)
                         await upstream.send(message["bytes"])
 
             async def upstream_to_client() -> None:
                 async for message in upstream:
+                    touch_workspace_activity(user.id, ws.project_slug)
                     if isinstance(message, bytes):
                         await websocket.send_bytes(message)
                     else:

@@ -1,6 +1,10 @@
+import base64
+import http.client
 import re
 import secrets
 import subprocess
+import time
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 from .config import settings
@@ -56,8 +60,49 @@ def workspace_paths(user_id: str, project_slug: str) -> tuple[Path, Path, Path, 
     return workspace, data, state, config
 
 
+
+def workspace_activity_path(user_id: str, project_slug: str) -> Path:
+    return workspace_root(user_id, project_slug) / "last-activity"
+
+
+def touch_workspace_activity(user_id: str, project_slug: str) -> None:
+    path = workspace_activity_path(user_id, project_slug)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch(exist_ok=True)
+
+
+def workspace_last_activity(user_id: str, project_slug: str) -> datetime | None:
+    path = workspace_activity_path(user_id, project_slug)
+    if not path.exists():
+        return None
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+
+
 def workspace_secret_path(user_id: str, project_slug: str) -> Path:
     return workspace_root(user_id, project_slug) / "runtime-secret"
+
+
+def workspace_stop_reason_path(user_id: str, project_slug: str) -> Path:
+    return workspace_root(user_id, project_slug) / "stop-reason"
+
+
+def write_workspace_stop_reason(user_id: str, project_slug: str, reason: str) -> None:
+    path = workspace_stop_reason_path(user_id, project_slug)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(reason.strip() + "\n", encoding="utf-8")
+    path.chmod(0o600)
+
+
+def read_workspace_stop_reason(user_id: str, project_slug: str) -> str | None:
+    path = workspace_stop_reason_path(user_id, project_slug)
+    if not path.is_file():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value or None
+
+
+def clear_workspace_stop_reason(user_id: str, project_slug: str) -> None:
+    workspace_stop_reason_path(user_id, project_slug).unlink(missing_ok=True)
 
 
 def write_workspace_secret(user_id: str, project_slug: str, password: str) -> None:
@@ -81,6 +126,45 @@ def workspace_host_port(slot_id: int) -> int:
     return settings.workspace_host_port_base + slot_id
 
 
+
+def wait_workspace_ready(container_name: str, host_port: int, password: str) -> None:
+    deadline = time.monotonic() + settings.workspace_ready_timeout_seconds
+    credentials = base64.b64encode(f"opencode:{password}".encode("utf-8")).decode("ascii")
+    last_error = "backend has not accepted a connection yet"
+
+    while time.monotonic() < deadline:
+        if not container_running(container_name):
+            logs = _run(["logs", "--tail", "80", container_name], check=False)
+            detail = (logs.stderr or logs.stdout or "no container logs available").strip()
+            raise RuntimeError(f"OpenCode container exited before becoming ready: {detail}")
+
+        connection = None
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", host_port, timeout=2)
+            connection.request(
+                "GET",
+                "/global/health",
+                headers={"Authorization": f"Basic {credentials}"},
+            )
+            response = connection.getresponse()
+            response.read()
+            if 200 <= response.status < 300:
+                return
+            last_error = f"health endpoint returned HTTP {response.status}"
+        except (TimeoutError, OSError, http.client.HTTPException) as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+        finally:
+            if connection is not None:
+                connection.close()
+
+        time.sleep(settings.workspace_ready_poll_interval_seconds)
+
+    raise RuntimeError(
+        f"OpenCode did not become ready within {settings.workspace_ready_timeout_seconds}s "
+        f"on 127.0.0.1:{host_port} ({last_error})"
+    )
+
+
 def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id: int) -> RuntimeResult:
     ensure_network()
     workspace, data, state, config = workspace_paths(user_id, project_slug)
@@ -91,6 +175,7 @@ def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id:
 
     # Defensive cleanup in case a prior crash left the slot's name behind.
     _run(["rm", "-f", container_name], check=False)
+    clear_workspace_stop_reason(user_id, project_slug)
     write_workspace_secret(user_id, project_slug, password)
 
     args = [
@@ -128,6 +213,12 @@ def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id:
         "serve", "--hostname", "0.0.0.0", "--port", "4096"
     ])
     _run(args)
+    try:
+        wait_workspace_ready(container_name, host_port, password)
+    except Exception:
+        _run(["rm", "-f", container_name], check=False)
+        raise
+    touch_workspace_activity(user_id, project_slug)
     return RuntimeResult(container_name=container_name, basic_password=password, host_port=host_port)
 
 

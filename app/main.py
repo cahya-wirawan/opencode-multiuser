@@ -1,9 +1,11 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import escape
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocket, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -12,7 +14,17 @@ from .config import settings
 from .db import Base, SessionLocal, engine, get_db
 from .gateway import proxy_http, proxy_websocket, selected_workspace_for_request
 from .models import Slot, User, Workspace, WorkspaceStatus
-from .runtime import start_workspace, stop_workspace, workspace_secret_path
+from .portal import PORTAL_CSS, PORTAL_JS
+from .runtime import (
+    container_running,
+    start_workspace,
+    stop_workspace,
+    touch_workspace_activity,
+    workspace_last_activity,
+    workspace_secret_path,
+    read_workspace_stop_reason,
+    write_workspace_stop_reason,
+)
 from .schemas import LoginRequest, RegisterRequest, TokenResponse, WorkspaceResponse, WorkspaceStartRequest
 from .security import current_user, hash_password, issue_token, load_user_from_token, verify_password
 from .traefik import cleanup_legacy_workspace_routes, workspace_open_url
@@ -55,6 +67,83 @@ def _seed_slots() -> None:
         db.commit()
 
 
+logger = logging.getLogger(__name__)
+
+
+def _release_workspace(ws: Workspace, db: Session, reason: str = "manual") -> None:
+    """Destroy one runtime container and return its slot to the pool."""
+    if ws.status not in (WorkspaceStatus.STOPPED, WorkspaceStatus.ERROR):
+        ws.status = WorkspaceStatus.STOPPING
+        db.commit()
+
+    container_name = ws.container_name
+    slot_id = ws.slot_id
+    stop_workspace(container_name)
+
+    if slot_id:
+        slot = db.get(Slot, slot_id)
+        if slot:
+            slot.in_use = False
+            slot.workspace_id = None
+
+    ws.status = WorkspaceStatus.STOPPED
+    ws.stopped_at = datetime.now(timezone.utc)
+    ws.container_name = None
+    ws.slot_id = None
+    write_workspace_stop_reason(ws.user_id, ws.project_slug, reason)
+    db.commit()
+
+
+def _stop_user_workspaces(user_id: str, db: Session) -> int:
+    rows = db.scalars(
+        select(Workspace).where(
+            Workspace.user_id == user_id,
+            Workspace.status.in_([WorkspaceStatus.STARTING, WorkspaceStatus.RUNNING, WorkspaceStatus.STOPPING]),
+        )
+    ).all()
+    for ws in rows:
+        _release_workspace(ws, db, reason="logout")
+    return len(rows)
+
+
+def _reap_idle_workspaces() -> int:
+    if settings.workspace_idle_timeout_minutes <= 0:
+        return 0
+
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=settings.workspace_idle_timeout_minutes)
+    reaped = 0
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(Workspace).where(Workspace.status == WorkspaceStatus.RUNNING)
+        ).all()
+        for ws in rows:
+            last = workspace_last_activity(ws.user_id, ws.project_slug) or ws.created_at
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            if last <= cutoff:
+                logger.info(
+                    "Reclaiming idle workspace %s (%s), last activity %s",
+                    ws.id,
+                    ws.project_slug,
+                    last.isoformat(),
+                )
+                _release_workspace(ws, db, reason="idle")
+                reaped += 1
+    return reaped
+
+
+async def _idle_reaper_loop() -> None:
+    interval = max(5, settings.workspace_reaper_interval_seconds)
+    while True:
+        try:
+            await asyncio.sleep(interval)
+            await asyncio.to_thread(_reap_idle_workspaces)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Idle workspace reaper failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
@@ -64,12 +153,20 @@ async def lifespan(app: FastAPI):
     # v6 routes all workspaces through the gateway, so v5's per-workspace
     # Traefik files must not remain active after an upgrade.
     cleanup_legacy_workspace_routes()
-    yield
+    reaper_task = None
+    if settings.workspace_idle_timeout_minutes > 0:
+        reaper_task = asyncio.create_task(_idle_reaper_loop(), name="workspace-idle-reaper")
+    try:
+        yield
+    finally:
+        if reaper_task:
+            reaper_task.cancel()
+            await asyncio.gather(reaper_task, return_exceptions=True)
 
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.3.0",
+    version="0.3.4",
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
@@ -110,7 +207,10 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
 
 
 @app.api_route("/logout", methods=["GET", "POST"])
-def logout():
+def logout(request: Request, db: Session = Depends(get_db)):
+    user = load_user_from_token(_request_token(request), db)
+    if user and settings.stop_workspaces_on_logout:
+        _stop_user_workspaces(user.id, db)
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(settings.session_cookie_name, path="/")
     response.delete_cookie(settings.workspace_cookie_name, path="/")
@@ -139,24 +239,37 @@ document.getElementById('login').addEventListener('submit', async (e) => {
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(user: User = Depends(current_user)):
+def dashboard(request: Request, user: User = Depends(current_user)):
     username = escape(user.username)
-    return HTMLResponse(
+    reason = request.query_params.get("reason")
+    project = escape(request.query_params.get("workspace", ""))
+    notice = ""
+    if reason == "idle":
+        name = f" <b>{project}</b>" if project else ""
+        notice = (
+            f'<div class="notice">Workspace{name} was stopped after '
+            f'{settings.workspace_idle_timeout_minutes} minutes of inactivity. '
+            'Its slot has been freed. Start the project again to continue.</div>'
+        )
+    response = HTMLResponse(
         f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>OpenCode Workspaces</title>
-<style>body{{font-family:system-ui;max-width:900px;margin:40px auto;padding:20px}}button,input{{font:inherit;padding:8px}}.ws{{padding:12px;border:1px solid #ddd;margin:8px 0;border-radius:8px}}a{{margin-right:10px}}</style></head>
-<body><div style="float:right"><a href="/logout">Logout</a></div><h1>OpenCode Workspaces</h1><p>Signed in as <b>{username}</b></p>
+<style>body{{font-family:system-ui;max-width:900px;margin:40px auto;padding:20px}}button,input{{font:inherit;padding:8px}}.ws{{padding:12px;border:1px solid #ddd;margin:8px 0;border-radius:8px}}.notice{{padding:12px 14px;background:#fff7d6;border:1px solid #d7b84b;border-radius:8px;margin:14px 0}}a{{margin-right:10px}}</style></head>
+<body><div style="float:right"><a href="/logout">Logout</a></div><h1>OpenCode Workspaces</h1><p>Signed in as <b>{username}</b></p>{notice}
 <form id="new"><input id="project" required pattern="[A-Za-z0-9_.-]+" placeholder="project-slug"><button>Start workspace</button></form>
 <div id="list">Loading…</div>
 <script>
 async function api(url, opts={{}}) {{ const r=await fetch(url, opts); if(!r.ok) throw new Error((await r.json()).detail || r.statusText); return r.json(); }}
 async function refresh() {{ const rows=await api('/workspaces'); const el=document.getElementById('list'); el.innerHTML='';
  rows.forEach(w => {{ const d=document.createElement('div'); d.className='ws'; d.innerHTML=`<b>${{w.project_slug}}</b> — ${{w.status}} — slot ${{w.slot_id ?? '-'}} `;
- if(w.status==='running' && w.url) {{ const a=document.createElement('a'); a.href=w.url; a.textContent='Open'; d.appendChild(a); const b=document.createElement('button'); b.textContent='Stop'; b.onclick=async()=>{{await api('/workspaces/'+w.id+'/stop',{{method:'POST'}});refresh();}}; d.appendChild(b); }} else if(w.status==='running' && !w.url) {{ const u=document.createElement('button'); u.textContent='Upgrade workspace'; u.onclick=async()=>{{const x=await api('/workspaces/start',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{project_slug:w.project_slug}})}});location.href=x.url;}}; d.appendChild(u); }} el.appendChild(d); }}); }}
+ if(w.status==='running' && w.url) {{ const a=document.createElement('a'); a.href=w.url; a.textContent='Open'; d.appendChild(a); const b=document.createElement('button'); b.textContent='Stop'; b.onclick=async()=>{{await api('/workspaces/'+w.id+'/stop',{{method:'POST'}});refresh();}}; d.appendChild(b); }} else if(w.status==='running' && !w.url) {{ const u=document.createElement('button'); u.textContent='Upgrade workspace'; u.onclick=async()=>{{const x=await api('/workspaces/start',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{project_slug:w.project_slug}})}});location.href=x.url;}}; d.appendChild(u); }} else if(w.status==='stopped' || w.status==='error') {{ const s=document.createElement('button'); s.textContent='Start'; s.onclick=async()=>{{const x=await api('/workspaces/start',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{project_slug:w.project_slug}})}});location.href=x.url;}}; d.appendChild(s); }} el.appendChild(d); }}); }}
 document.getElementById('new').onsubmit=async(e)=>{{e.preventDefault(); try{{ const w=await api('/workspaces/start',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{project_slug:project.value}})}}); location.href=w.url; }}catch(err){{alert(err.message)}} }};
 refresh().catch(e=>document.getElementById('list').textContent=e.message);
 </script></body></html>"""
     )
+    if reason == "idle":
+        response.delete_cookie(settings.workspace_cookie_name, path="/")
+    return response
 
 
 @app.get("/workspaces", response_model=list[WorkspaceResponse])
@@ -176,18 +289,14 @@ def start(req: WorkspaceStartRequest, user: User = Depends(current_user), db: Se
     if existing and existing.status in (WorkspaceStatus.STARTING, WorkspaceStatus.RUNNING):
         # A v5 runtime has no gateway secret and no loopback slot port. Recycle it
         # transparently the first time it is opened after a v6 upgrade.
-        if existing.status == WorkspaceStatus.RUNNING and workspace_secret_path(user.id, req.project_slug).is_file():
+        if (
+            existing.status == WorkspaceStatus.RUNNING
+            and workspace_secret_path(user.id, req.project_slug).is_file()
+            and container_running(existing.container_name)
+        ):
+            touch_workspace_activity(user.id, req.project_slug)
             return _workspace_response(existing)
-        stop_workspace(existing.container_name)
-        if existing.slot_id:
-            old_slot = db.get(Slot, existing.slot_id)
-            if old_slot:
-                old_slot.in_use = False
-                old_slot.workspace_id = None
-        existing.status = WorkspaceStatus.STOPPED
-        existing.container_name = None
-        existing.slot_id = None
-        db.commit()
+        _release_workspace(existing, db, reason="recycle")
 
     slot_stmt = select(Slot).where(Slot.in_use.is_(False)).order_by(Slot.id).limit(1)
     if not settings.database_url.startswith("sqlite"):
@@ -234,22 +343,68 @@ def stop(workspace_id: str, user: User = Depends(current_user), db: Session = De
     ws = db.scalar(select(Workspace).where(Workspace.id == workspace_id, Workspace.user_id == user.id))
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    if ws.status in (WorkspaceStatus.STOPPED, WorkspaceStatus.ERROR):
+    if ws.status == WorkspaceStatus.STOPPED:
         return _workspace_response(ws)
 
-    ws.status = WorkspaceStatus.STOPPING
-    db.commit()
-    stop_workspace(ws.container_name)
-    if ws.slot_id:
-        slot = db.get(Slot, ws.slot_id)
-        if slot:
-            slot.in_use = False
-            slot.workspace_id = None
-    ws.status = WorkspaceStatus.STOPPED
-    ws.stopped_at = datetime.now(timezone.utc)
-    db.commit()
+    _release_workspace(ws, db, reason="manual")
     db.refresh(ws)
     return _workspace_response(ws)
+
+
+@app.get("/_portal/widget.css", response_class=PlainTextResponse)
+def portal_widget_css():
+    return PlainTextResponse(PORTAL_CSS, media_type="text/css", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/_portal/widget.js", response_class=PlainTextResponse)
+def portal_widget_js():
+    return PlainTextResponse(PORTAL_JS, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/_portal/dashboard")
+def portal_dashboard(user: User = Depends(current_user)):
+    return RedirectResponse("/dashboard", status_code=303)
+
+
+@app.get("/_portal/status")
+def portal_status(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    selector = request.cookies.get(settings.workspace_cookie_name)
+    if not selector:
+        return {"workspace_status": "none"}
+    ws = db.scalar(select(Workspace).where(Workspace.id == selector, Workspace.user_id == user.id))
+    if not ws:
+        return {"workspace_status": "none"}
+    reason = read_workspace_stop_reason(user.id, ws.project_slug) if ws.status == WorkspaceStatus.STOPPED else None
+    return {
+        "workspace_id": ws.id,
+        "project_slug": ws.project_slug,
+        "workspace_status": ws.status.value,
+        "slot_id": ws.slot_id,
+        "stop_reason": reason,
+    }
+
+
+@app.post("/_portal/stop")
+def portal_stop(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    selector = request.cookies.get(settings.workspace_cookie_name)
+    if selector:
+        ws = db.scalar(select(Workspace).where(Workspace.id == selector, Workspace.user_id == user.id))
+        if ws and ws.status != WorkspaceStatus.STOPPED:
+            _release_workspace(ws, db, reason="manual")
+    response = RedirectResponse("/dashboard", status_code=303)
+    response.delete_cookie(settings.workspace_cookie_name, path="/")
+    return response
+
+
+@app.post("/_portal/logout")
+def portal_logout(request: Request, db: Session = Depends(get_db)):
+    user = load_user_from_token(_request_token(request), db)
+    if user and settings.stop_workspaces_on_logout:
+        _stop_user_workspaces(user.id, db)
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(settings.session_cookie_name, path="/")
+    response.delete_cookie(settings.workspace_cookie_name, path="/")
+    return response
 
 
 @app.get("/open/{workspace_id}")
@@ -272,6 +427,7 @@ def open_workspace(
             status_code=409,
             detail="Legacy workspace must be recycled through /workspaces/start before opening through the v6 gateway.",
         )
+    touch_workspace_activity(user.id, ws.project_slug)
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(
         settings.workspace_cookie_name,
@@ -291,6 +447,56 @@ def _request_token(request: Request) -> str | None:
     return request.cookies.get(settings.session_cookie_name)
 
 
+def _browser_navigation(request: Request) -> bool:
+    if request.method != "GET":
+        return False
+    if request.headers.get("sec-fetch-mode", "").lower() == "navigate":
+        return True
+    return "text/html" in request.headers.get("accept", "").lower()
+
+
+def _idle_workspace_for_request(request: Request, user: User, db: Session) -> Workspace | None:
+    selector = request.headers.get("x-opencode-workspace") or request.cookies.get(settings.workspace_cookie_name)
+    if not selector:
+        return None
+    # A stopped runtime clears container_name, so the stable workspace id is the
+    # reliable selector after reclamation. API callers should use the id if they
+    # need timeout diagnostics after the runtime has stopped.
+    ws = db.scalar(
+        select(Workspace).where(
+            Workspace.id == selector,
+            Workspace.user_id == user.id,
+            Workspace.status == WorkspaceStatus.STOPPED,
+        )
+    )
+    if ws and read_workspace_stop_reason(user.id, ws.project_slug) == "idle":
+        return ws
+    return None
+
+
+def _idle_timeout_response(request: Request, user: User, db: Session):
+    ws = _idle_workspace_for_request(request, user, db)
+    if not ws:
+        return None
+    if _browser_navigation(request):
+        from urllib.parse import quote
+        response = RedirectResponse(
+            f"/dashboard?reason=idle&workspace={quote(ws.project_slug)}",
+            status_code=303,
+        )
+        response.delete_cookie(settings.workspace_cookie_name, path="/")
+        return response
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "workspace_idle_timeout",
+            "message": "Workspace stopped due to inactivity. Return to /dashboard and start it again.",
+            "workspace_id": ws.id,
+            "project_slug": ws.project_slug,
+        },
+    )
+
+
 @app.get("/")
 async def gateway_root(request: Request, db: Session = Depends(get_db)):
     user = load_user_from_token(_request_token(request), db)
@@ -299,7 +505,12 @@ async def gateway_root(request: Request, db: Session = Depends(get_db)):
     try:
         selected_workspace_for_request(request, user, db)
     except HTTPException:
-        return RedirectResponse("/dashboard", status_code=303)
+        idle = _idle_timeout_response(request, user, db)
+        if idle is not None:
+            return idle
+        response = RedirectResponse("/dashboard", status_code=303)
+        response.delete_cookie(settings.workspace_cookie_name, path="/")
+        return response
     return await proxy_http(request, user, db)
 
 
@@ -312,7 +523,14 @@ async def gateway_http(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    return await proxy_http(request, user, db)
+    try:
+        return await proxy_http(request, user, db)
+    except HTTPException as exc:
+        if exc.status_code in (404, 409):
+            idle = _idle_timeout_response(request, user, db)
+            if idle is not None:
+                return idle
+        raise
 
 
 @app.websocket("/{path:path}")

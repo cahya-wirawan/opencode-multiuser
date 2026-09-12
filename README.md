@@ -1,6 +1,17 @@
-# OpenCode Multiuser v6 — single-host gateway
+# OpenCode Multiuser v6.4 — single-host gateway
 
-A multi-user OpenCode control plane for **rootless Podman + systemd/Quadlet + Traefik**. v6 removes per-workspace public hostnames and routes every user through one public URL.
+A multi-user OpenCode control plane for **rootless Podman + systemd/Quadlet + Traefik**. v6.4 routes every user through one public URL, waits for OpenCode readiness before opening a workspace, and automatically reclaims unused slots.
+
+## v6.4 management widget
+
+OpenCode HTML responses are now augmented at the gateway with a small fixed **Portal** menu. Upstream OpenCode remains unmodified. The menu provides:
+
+- **Dashboard** — return to the workspace dashboard without stopping the runtime.
+- **Stop workspace** — destroy the selected runtime, free its slot, preserve persistent data, and return to the dashboard.
+- **Logout** — stop the user's running workspaces according to `STOP_WORKSPACES_ON_LOGOUT`, clear authentication cookies, and return to the login page.
+
+The widget is injected only into `text/html` responses. Its JavaScript and CSS are served from `/_portal/widget.js` and `/_portal/widget.css`. A lightweight `/_portal/status` poll lets an already-open OpenCode page notice that an idle reaper reclaimed its workspace and redirect to the dashboard notice.
+
 
 ## Architecture
 
@@ -38,6 +49,10 @@ Each workspace container is still isolated and disposable. Its repository, OpenC
 - The client routing header and gateway cookies are stripped before proxying to OpenCode.
 - The gateway injects the container's OpenCode Basic Auth credential server-side.
 - HTTP and WebSocket proxying are both supported.
+- `/workspaces/start` waits for OpenCode `/global/health` before reporting the workspace as running.
+- Logout destroys all running workspaces owned by that user and immediately returns their slots to the pool.
+- A background idle reaper destroys workspaces with no gateway activity for `WORKSPACE_IDLE_TIMEOUT_MINUTES` (30 minutes by default).
+- HTTP streaming and WebSocket traffic refresh the activity timestamp, so active generations/connections are not reclaimed.
 
 ## Requirements
 
@@ -84,8 +99,8 @@ Log in again as the rootless service user afterward.
 ## Install
 
 ```bash
-unzip opencode-multiuser-fixed-v6.zip
-cd opencode-multiuser-fixed-v6
+unzip opencode-multiuser-fixed-v6.4.zip
+cd opencode-multiuser-fixed-v6.4
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
@@ -123,6 +138,11 @@ CONTROL_PLANE_PORT=8010
 CONTROL_PLANE_URL=http://code-test.example.org:8443
 MAX_SLOTS=10
 WORKSPACE_HOST_PORT_BASE=41000
+WORKSPACE_READY_TIMEOUT_SECONDS=45
+WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5
+WORKSPACE_IDLE_TIMEOUT_MINUTES=30
+WORKSPACE_REAPER_INTERVAL_SECONDS=60
+STOP_WORKSPACES_ON_LOGOUT=true
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
@@ -215,6 +235,39 @@ code-test.example.org -> host
 
 The old wildcard `*.code-test.example.org` record may remain, but v6 does not use it.
 
+## Automatic slot reclamation
+
+Two mechanisms keep capacity from being stranded:
+
+1. **Logout cleanup** — `/logout` stops every `starting`/`running` workspace for the authenticated user, destroys its disposable container, and returns the slot to the pool. Persistent project/OpenCode data is not deleted. Disable this behavior with `STOP_WORKSPACES_ON_LOGOUT=false`.
+2. **Idle timeout** — the gateway touches `last-activity` in each workspace directory on HTTP requests, streamed response chunks, WebSocket connect/messages, and workspace open/start. The reaper checks running workspaces every `WORKSPACE_REAPER_INTERVAL_SECONDS` and stops those idle longer than `WORKSPACE_IDLE_TIMEOUT_MINUTES`. Set the timeout to `0` to disable idle cleanup.
+
+The activity file lives alongside the persistent workspace data:
+
+```text
+~/.local/share/opencode-multiuser/users/<user-id>/<project>/last-activity
+```
+
+For testing you can use a short timeout, for example:
+
+```bash
+WORKSPACE_IDLE_TIMEOUT_MINUTES=2
+WORKSPACE_REAPER_INTERVAL_SECONDS=10
+```
+
+then restart the control plane. For normal use, 30–60 minutes is a more practical default.
+
+## Workspace readiness
+
+A Podman container being `Up` does not mean OpenCode is already accepting connections. v6.4 therefore polls the authenticated OpenCode health endpoint on the slot's loopback port and only changes the database status to `running` after health succeeds. Defaults:
+
+```bash
+WORKSPACE_READY_TIMEOUT_SECONDS=45
+WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5
+```
+
+If OpenCode exits or never becomes healthy, the just-created container is removed and the slot is returned instead of sending the browser into a transient `502 OpenCode backend unavailable` error.
+
 ## Security notes
 
 - The browser never receives the OpenCode Basic Auth password.
@@ -246,3 +299,14 @@ Expected health response:
 ### HTTP cookie note
 
 When Traefik is serving plain HTTP (`TRAEFIK_TLS=false`), keep `COOKIE_SECURE=false`. Set it to `true` only after the public gateway is actually HTTPS. This setting is intentionally independent from `CONTROL_PLANE_URL` so upgrades from older configurations do not break browser login cookies.
+
+
+## Idle-timeout browser UX (v6.4)
+
+When the reaper stops a workspace because it exceeded `WORKSPACE_IDLE_TIMEOUT_MINUTES`, it writes a small per-project `stop-reason` marker. Authentication remains valid. On the next top-level browser request for that selected workspace, the gateway clears the stale workspace-selection cookie and redirects to:
+
+```text
+/dashboard?reason=idle&workspace=<project-slug>
+```
+
+The dashboard displays a notice explaining that the workspace was reclaimed and its slot was freed. Non-navigation API/XHR requests receive HTTP `409` with a machine-readable `workspace_idle_timeout` detail, while stale WebSockets are closed with code `4409`. Manual stops, logout cleanup, and runtime recycling use different stop reasons and do not masquerade as idle timeouts.

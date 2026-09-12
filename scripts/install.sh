@@ -157,6 +157,11 @@ MAX_SLOTS=10
 WORKSPACE_MEMORY=8g
 WORKSPACE_CPUS=4
 WORKSPACE_PIDS_LIMIT=1024
+WORKSPACE_READY_TIMEOUT_SECONDS=45
+WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5
+WORKSPACE_IDLE_TIMEOUT_MINUTES=30
+WORKSPACE_REAPER_INTERVAL_SECONDS=60
+STOP_WORKSPACES_ON_LOGOUT=true
 WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE
 TRAEFIK_DYNAMIC_DIR=$DATA/traefik-dynamic
 TRAEFIK_TLS=false
@@ -172,6 +177,11 @@ else
   grep -q '^WORKSPACE_COOKIE_NAME=' "$CFG/control-plane.env" || echo "WORKSPACE_COOKIE_NAME=oc_workspace" >> "$CFG/control-plane.env"
   grep -q '^COOKIE_SECURE=' "$CFG/control-plane.env" || echo "COOKIE_SECURE=false" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_HOST_PORT_BASE=' "$CFG/control-plane.env" || echo "WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE" >> "$CFG/control-plane.env"
+  grep -q '^WORKSPACE_READY_TIMEOUT_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_TIMEOUT_SECONDS=45" >> "$CFG/control-plane.env"
+  grep -q '^WORKSPACE_READY_POLL_INTERVAL_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5" >> "$CFG/control-plane.env"
+  grep -q '^WORKSPACE_IDLE_TIMEOUT_MINUTES=' "$CFG/control-plane.env" || echo "WORKSPACE_IDLE_TIMEOUT_MINUTES=30" >> "$CFG/control-plane.env"
+  grep -q '^WORKSPACE_REAPER_INTERVAL_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_REAPER_INTERVAL_SECONDS=60" >> "$CFG/control-plane.env"
+  grep -q '^STOP_WORKSPACES_ON_LOGOUT=' "$CFG/control-plane.env" || echo "STOP_WORKSPACES_ON_LOGOUT=true" >> "$CFG/control-plane.env"
 
   # v6 uses one public gateway URL. Rewrite legacy public URL defaults while
   # preserving a custom value if the administrator already set one.
@@ -216,10 +226,11 @@ podman pull docker.io/library/traefik:v3.5
 systemctl --user daemon-reload
 systemctl --user start opencode-network.service postgres.service traefik.service
 sleep 2
-systemctl --user enable --now opencode-control-plane.service
+systemctl --user enable opencode-control-plane.service
+systemctl --user restart opencode-control-plane.service
 
 cat <<MSG
-Installed OpenCode Multiuser v6 (single-host gateway).
+Installed OpenCode Multiuser v6.4 (single-host gateway).
 
 Public gateway:
   http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT
