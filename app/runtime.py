@@ -233,3 +233,14 @@ def container_running(container_name: str | None) -> bool:
         return False
     cp = _run(["inspect", "-f", "{{.State.Running}}", container_name], check=False)
     return cp.returncode == 0 and cp.stdout.strip() == "true"
+
+
+def container_has_workspace_port(container_name: str | None, slot_id: int | None) -> bool:
+    """Return True when the runtime exposes slot's expected loopback port."""
+    if not container_name or slot_id is None:
+        return False
+    cp = _run(["port", container_name, "4096/tcp"], check=False)
+    if cp.returncode != 0:
+        return False
+    expected = f"127.0.0.1:{workspace_host_port(slot_id)}"
+    return any(line.strip() == expected for line in cp.stdout.splitlines())

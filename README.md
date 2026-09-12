@@ -310,3 +310,12 @@ When the reaper stops a workspace because it exceeded `WORKSPACE_IDLE_TIMEOUT_MI
 ```
 
 The dashboard displays a notice explaining that the workspace was reclaimed and its slot was freed. Non-navigation API/XHR requests receive HTTP `409` with a machine-readable `workspace_idle_timeout` detail, while stale WebSockets are closed with code `4409`. Manual stops, logout cleanup, and runtime recycling use different stop reasons and do not masquerade as idle timeouts.
+
+## v6.4.1 upgrade integrity check
+
+The installer now verifies that `app/portal.py` exists both in the extracted release tree and in the installed target before restarting the control plane. This prevents a partial v6.4 upgrade from leaving `gateway.py` installed without its portal module.
+
+
+## v6.4.2 stale-runtime reconciliation
+
+The control plane now reconciles RUNNING/STARTING/STOPPING database leases against Podman at startup and during housekeeping. If a container is missing or no longer publishes its expected `127.0.0.1:4100x -> 4096` port, the stale runtime is stopped/released and its slot is returned. Browser navigation is redirected to the dashboard with a recovery notice instead of returning `502 OpenCode backend unavailable`.

@@ -7,7 +7,7 @@ packages = ["app"]
 
 [project]
 name = "opencode-multiuser"
-version = "0.3.4"
+version = "0.6.4.1"
 description = "Single-host multi-user OpenCode gateway for rootless Podman, systemd and Traefik"
 requires-python = ">=3.11"
 dependencies = [

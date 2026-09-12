@@ -12,6 +12,14 @@ TRAEFIK_ENTRYPOINT=${TRAEFIK_ENTRYPOINT:-websecure}
 WORKSPACE_HOST_PORT_BASE=${WORKSPACE_HOST_PORT_BASE:-41000}
 SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
+# v6.4+ requires the portal injection module. Refuse to perform a partial
+# upgrade if the extracted source tree is incomplete.
+if [[ ! -f "$SELF_DIR/app/portal.py" ]]; then
+  echo "ERROR: $SELF_DIR/app/portal.py is missing." >&2
+  echo "Extract the complete release archive and run install.sh from that tree." >&2
+  exit 1
+fi
+
 if [[ -n "${PYTHON_BIN:-}" ]]; then
   PYTHON_CANDIDATES=("$PYTHON_BIN")
 else
@@ -123,6 +131,11 @@ EOF
 fi
 
 rsync -a --delete --exclude .venv --exclude .pytest_cache "$SELF_DIR/" "$TARGET/"
+
+if [[ ! -f "$TARGET/app/portal.py" ]]; then
+  echo "ERROR: upgrade copy is incomplete: $TARGET/app/portal.py was not installed." >&2
+  exit 1
+fi
 cp "$TARGET/systemd/quadlet/"* "$QUADLET/"
 cp "$TARGET/systemd/opencode-control-plane.service" "$USER_SYSTEMD/"
 cp "$TARGET/traefik/traefik.yml" "$CFG/traefik.yml"
@@ -230,7 +243,7 @@ systemctl --user enable opencode-control-plane.service
 systemctl --user restart opencode-control-plane.service
 
 cat <<MSG
-Installed OpenCode Multiuser v6.4 (single-host gateway).
+Installed OpenCode Multiuser v6.4.1 (single-host gateway).
 
 Public gateway:
   http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT

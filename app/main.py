@@ -17,6 +17,7 @@ from .models import Slot, User, Workspace, WorkspaceStatus
 from .portal import PORTAL_CSS, PORTAL_JS
 from .runtime import (
     container_running,
+    container_has_workspace_port,
     start_workspace,
     stop_workspace,
     touch_workspace_activity,
@@ -94,6 +95,43 @@ def _release_workspace(ws: Workspace, db: Session, reason: str = "manual") -> No
     db.commit()
 
 
+
+
+def _workspace_runtime_usable(ws: Workspace) -> bool:
+    return (
+        ws.status == WorkspaceStatus.RUNNING
+        and ws.slot_id is not None
+        and bool(ws.container_name)
+        and workspace_secret_path(ws.user_id, ws.project_slug).is_file()
+        and container_running(ws.container_name)
+        and container_has_workspace_port(ws.container_name, ws.slot_id)
+    )
+
+
+def _reconcile_workspace_runtimes() -> int:
+    """Release stale DB leases after crashes/upgrades or legacy runtimes."""
+    reconciled = 0
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(Workspace).where(
+                Workspace.status.in_([
+                    WorkspaceStatus.STARTING,
+                    WorkspaceStatus.RUNNING,
+                    WorkspaceStatus.STOPPING,
+                ])
+            )
+        ).all()
+        for ws in rows:
+            if _workspace_runtime_usable(ws):
+                continue
+            logger.warning(
+                "Recycling stale workspace %s (%s): status=%s container=%s slot=%s",
+                ws.id, ws.project_slug, ws.status.value, ws.container_name, ws.slot_id,
+            )
+            _release_workspace(ws, db, reason="recycle")
+            reconciled += 1
+    return reconciled
+
 def _stop_user_workspaces(user_id: str, db: Session) -> int:
     rows = db.scalars(
         select(Workspace).where(
@@ -137,6 +175,7 @@ async def _idle_reaper_loop() -> None:
     while True:
         try:
             await asyncio.sleep(interval)
+            await asyncio.to_thread(_reconcile_workspace_runtimes)
             await asyncio.to_thread(_reap_idle_workspaces)
         except asyncio.CancelledError:
             raise
@@ -153,6 +192,7 @@ async def lifespan(app: FastAPI):
     # v6 routes all workspaces through the gateway, so v5's per-workspace
     # Traefik files must not remain active after an upgrade.
     cleanup_legacy_workspace_routes()
+    _reconcile_workspace_runtimes()
     reaper_task = None
     if settings.workspace_idle_timeout_minutes > 0:
         reaper_task = asyncio.create_task(_idle_reaper_loop(), name="workspace-idle-reaper")
@@ -166,7 +206,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.3.4",
+    version="0.3.4.2",
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
@@ -250,6 +290,12 @@ def dashboard(request: Request, user: User = Depends(current_user)):
             f'<div class="notice">Workspace{name} was stopped after '
             f'{settings.workspace_idle_timeout_minutes} minutes of inactivity. '
             'Its slot has been freed. Start the project again to continue.</div>'
+        )
+    elif reason == "backend":
+        name = f" <b>{project}</b>" if project else ""
+        notice = (
+            f'<div class="notice">Workspace{name} runtime was no longer reachable. '
+            'Its stale slot has been freed. Start the project again to recreate the runtime.</div>'
         )
     response = HTMLResponse(
         f"""<!doctype html>
@@ -503,12 +549,22 @@ async def gateway_root(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse("/login", status_code=303)
     try:
-        selected_workspace_for_request(request, user, db)
+        ws = selected_workspace_for_request(request, user, db)
     except HTTPException:
         idle = _idle_timeout_response(request, user, db)
         if idle is not None:
             return idle
         response = RedirectResponse("/dashboard", status_code=303)
+        response.delete_cookie(settings.workspace_cookie_name, path="/")
+        return response
+    if not _workspace_runtime_usable(ws):
+        project = ws.project_slug
+        _release_workspace(ws, db, reason="recycle")
+        from urllib.parse import quote
+        response = RedirectResponse(
+            f"/dashboard?reason=backend&workspace={quote(project)}",
+            status_code=303,
+        )
         response.delete_cookie(settings.workspace_cookie_name, path="/")
         return response
     return await proxy_http(request, user, db)
@@ -524,6 +580,27 @@ async def gateway_http(
     db: Session = Depends(get_db),
 ):
     try:
+        ws = selected_workspace_for_request(request, user, db)
+        if not _workspace_runtime_usable(ws):
+            project = ws.project_slug
+            _release_workspace(ws, db, reason="recycle")
+            if _browser_navigation(request):
+                from urllib.parse import quote
+                response = RedirectResponse(
+                    f"/dashboard?reason=backend&workspace={quote(project)}",
+                    status_code=303,
+                )
+                response.delete_cookie(settings.workspace_cookie_name, path="/")
+                return response
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "workspace_backend_unavailable",
+                    "message": "Workspace runtime is no longer reachable. Start it again from /dashboard.",
+                    "workspace_id": ws.id,
+                    "project_slug": project,
+                },
+            )
         return await proxy_http(request, user, db)
     except HTTPException as exc:
         if exc.status_code in (404, 409):
