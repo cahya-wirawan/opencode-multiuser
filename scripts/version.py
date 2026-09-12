@@ -34,7 +34,7 @@ def read_version() -> str:
 
 def validate(version: str) -> str:
     if not SEMVER_RE.fullmatch(version):
-        raise SystemExit("Version must use MAJOR.MINOR.PATCH, for example 6.8.0")
+        raise SystemExit("Version must use MAJOR.MINOR.PATCH, for example 6.9.0")
     return version
 
 

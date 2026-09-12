@@ -41,6 +41,9 @@ class Settings(BaseSettings):
 
     podman_bin: str = "/usr/bin/podman"
     workspace_image: str = "localhost/opencode-workspace:latest"
+    opencode_version: str = "1.18.30"
+    opencode_registry_url: str = "https://registry.npmjs.org/opencode-ai/latest"
+    opencode_update_timeout_seconds: int = 900
     podman_network: str = "opencode-net"
     data_root: str = "~/.local/share/opencode-multiuser"
     max_slots: int = 10

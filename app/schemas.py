@@ -40,3 +40,7 @@ class AdminStatusUpdate(BaseModel):
 
 class AdminPasswordReset(BaseModel):
     password: str = Field(min_length=12, max_length=256)
+
+
+class OpenCodeUpdateRequest(BaseModel):
+    version: str = Field(min_length=5, max_length=64, pattern=r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")

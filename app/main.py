@@ -17,7 +17,7 @@ from .gateway import proxy_http, proxy_websocket, selected_workspace_for_request
 from .models import Slot, User, UserRole, Workspace, WorkspaceStatus
 from .migrations import drop_legacy_workspace_constraint, ensure_active_workspace_index, migrate_user_auth_schema
 from .portal import PORTAL_CSS, PORTAL_JS
-from .ui import APP_CSS, admin_users_page_html, dashboard_page_html, login_page_html, registration_page_html
+from .ui import APP_CSS, admin_system_page_html, admin_users_page_html, dashboard_page_html, login_page_html, registration_page_html
 from .runtime import (
     container_running,
     container_has_workspace_port,
@@ -30,13 +30,14 @@ from .runtime import (
     write_workspace_stop_reason,
 )
 from .schemas import (
-    AdminPasswordReset, AdminRoleUpdate, AdminStatusUpdate, LoginRequest, RegisterRequest,
+    AdminPasswordReset, AdminRoleUpdate, AdminStatusUpdate, LoginRequest, OpenCodeUpdateRequest, RegisterRequest,
     TokenResponse, WorkspaceResponse, WorkspaceStartRequest,
 )
 from .security import current_user, hash_password, issue_token, load_user_from_token, require_admin, role_for_new_user, verify_password
 from .traefik import cleanup_legacy_workspace_routes, workspace_open_url
 from .version import __version__
 from .oidc import oidc_client, provision_oidc_user
+from .opencode_update import latest_version as opencode_latest_version, start_update as start_opencode_update, system_snapshot as opencode_system_snapshot, update_status as opencode_update_status
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -499,6 +500,46 @@ def dashboard(
 @app.get("/admin/users", response_class=HTMLResponse)
 def admin_users_page(admin: User = Depends(require_admin)):
     return HTMLResponse(admin_users_page_html(admin.username, admin.display_name))
+
+
+@app.get("/admin/system", response_class=HTMLResponse)
+def admin_system_page(admin: User = Depends(require_admin)):
+    return HTMLResponse(admin_system_page_html(admin.username, admin.display_name))
+
+
+@app.get("/api/admin/system")
+def admin_system_info(admin: User = Depends(require_admin)):
+    return {
+        "portal_version": __version__,
+        "opencode": opencode_system_snapshot(check_latest=False),
+    }
+
+
+@app.get("/api/admin/system/opencode/latest")
+def admin_opencode_latest(admin: User = Depends(require_admin)):
+    try:
+        version = opencode_latest_version()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Unable to query OpenCode registry: {type(exc).__name__}: {exc}") from exc
+    return {"version": version}
+
+
+@app.get("/api/admin/system/opencode/update-status")
+def admin_opencode_update_status(admin: User = Depends(require_admin)):
+    return opencode_update_status()
+
+
+@app.post("/api/admin/system/opencode/update", status_code=status.HTTP_202_ACCEPTED)
+def admin_opencode_update(
+    req: OpenCodeUpdateRequest,
+    admin: User = Depends(require_admin),
+):
+    try:
+        return start_opencode_update(req.version)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/api/admin/users")

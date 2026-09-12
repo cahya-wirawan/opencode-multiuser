@@ -274,3 +274,23 @@ def test_last_enabled_admin_is_protected():
         db.add(second)
         db.commit()
         _protect_last_admin(root, db, True)
+
+
+def test_admin_system_ui_has_opencode_update_controls():
+    from app.ui import admin_system_page_html
+    html = admin_system_page_html('root', 'Root Admin')
+    assert 'System & OpenCode' in html
+    assert '/api/admin/system/opencode/latest' in html
+    assert '/api/admin/system/opencode/update' in html
+    assert 'Build & activate' in html
+    assert 'Running workspaces remain untouched' in html
+
+
+def test_opencode_version_validation():
+    from app.opencode_update import validate_version
+    assert validate_version('1.18.30') == '1.18.30'
+    try:
+        validate_version('latest;rm -rf /')
+        assert False, 'unsafe version must be rejected'
+    except ValueError:
+        pass

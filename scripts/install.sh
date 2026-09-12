@@ -3,6 +3,7 @@ set -euo pipefail
 
 if [[ -n "${BASE_DOMAIN+x}" ]]; then BASE_DOMAIN_EXPLICIT=1; fi
 BASE_DOMAIN=${BASE_DOMAIN:-code.example.com}
+if [[ -n "${OPENCODE_VERSION+x}" ]]; then OPENCODE_VERSION_EXPLICIT=1; fi
 OPENCODE_VERSION=${OPENCODE_VERSION:-1.18.30}
 if [[ -n "${CONTROL_PLANE_PORT+x}" ]]; then CONTROL_PLANE_PORT_EXPLICIT=1; fi
 CONTROL_PLANE_PORT=${CONTROL_PLANE_PORT:-8010}
@@ -14,7 +15,7 @@ SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
 # v6.4+ requires the portal injection module. Refuse to perform a partial
 # upgrade if the extracted source tree is incomplete.
-for required_file in app/portal.py app/ui.py app/oidc.py app/version.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py app/version.py; do
   if [[ ! -f "$SELF_DIR/$required_file" ]]; then
     echo "ERROR: $SELF_DIR/$required_file is missing." >&2
     echo "Extract the complete release archive and run install.sh from that tree." >&2
@@ -122,6 +123,10 @@ if [[ -f "$CFG/control-plane.env" ]]; then
     persisted_port=$(sed -n 's/^CONTROL_PLANE_PORT=//p' "$CFG/control-plane.env" | tail -1)
     [[ -n "$persisted_port" ]] && CONTROL_PLANE_PORT=$persisted_port
   fi
+  if [[ -z "${OPENCODE_VERSION_EXPLICIT:-}" ]]; then
+    persisted_opencode_version=$(sed -n 's/^OPENCODE_VERSION=//p' "$CFG/control-plane.env" | tail -1)
+    [[ -n "$persisted_opencode_version" ]] && OPENCODE_VERSION=$persisted_opencode_version
+  fi
 fi
 
 systemctl --user stop opencode-control-plane.service >/dev/null 2>&1 || true
@@ -137,7 +142,7 @@ fi
 
 rsync -a --delete --exclude .venv --exclude .pytest_cache "$SELF_DIR/" "$TARGET/"
 
-for required_file in app/portal.py app/ui.py app/oidc.py app/version.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py app/version.py; do
   if [[ ! -f "$TARGET/$required_file" ]]; then
     echo "ERROR: upgrade copy is incomplete: $TARGET/$required_file was not installed." >&2
     exit 1
@@ -188,6 +193,9 @@ WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
 PODMAN_BIN=/usr/bin/podman
 WORKSPACE_IMAGE=localhost/opencode-workspace:latest
+OPENCODE_VERSION=$OPENCODE_VERSION
+OPENCODE_REGISTRY_URL=https://registry.npmjs.org/opencode-ai/latest
+OPENCODE_UPDATE_TIMEOUT_SECONDS=900
 PODMAN_NETWORK=opencode-net
 DATA_ROOT=$DATA
 MAX_SLOTS=10
@@ -231,6 +239,9 @@ else
   grep -q '^OIDC_NAME_CLAIM=' "$CFG/control-plane.env" || echo "OIDC_NAME_CLAIM=name" >> "$CFG/control-plane.env"
   grep -q '^OIDC_STATE_COOKIE_NAME=' "$CFG/control-plane.env" || echo "OIDC_STATE_COOKIE_NAME=oc_oidc_state" >> "$CFG/control-plane.env"
   grep -q '^OIDC_STATE_TTL_SECONDS=' "$CFG/control-plane.env" || echo "OIDC_STATE_TTL_SECONDS=600" >> "$CFG/control-plane.env"
+  grep -q '^OPENCODE_VERSION=' "$CFG/control-plane.env" || echo "OPENCODE_VERSION=$OPENCODE_VERSION" >> "$CFG/control-plane.env"
+  grep -q '^OPENCODE_REGISTRY_URL=' "$CFG/control-plane.env" || echo "OPENCODE_REGISTRY_URL=https://registry.npmjs.org/opencode-ai/latest" >> "$CFG/control-plane.env"
+  grep -q '^OPENCODE_UPDATE_TIMEOUT_SECONDS=' "$CFG/control-plane.env" || echo "OPENCODE_UPDATE_TIMEOUT_SECONDS=900" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_HOST_PORT_BASE=' "$CFG/control-plane.env" || echo "WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_READY_TIMEOUT_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_TIMEOUT_SECONDS=45" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_READY_POLL_INTERVAL_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5" >> "$CFG/control-plane.env"
@@ -254,6 +265,15 @@ else
   fi
 fi
 
+# An explicit installer override becomes the new persisted engine version.
+if [[ -n "${OPENCODE_VERSION_EXPLICIT:-}" ]]; then
+  if grep -q '^OPENCODE_VERSION=' "$CFG/control-plane.env"; then
+    sed -i "s/^OPENCODE_VERSION=.*/OPENCODE_VERSION=$OPENCODE_VERSION/" "$CFG/control-plane.env"
+  else
+    echo "OPENCODE_VERSION=$OPENCODE_VERSION" >> "$CFG/control-plane.env"
+  fi
+fi
+
 EFFECTIVE_CONTROL_PLANE_PORT=$(sed -n 's/^CONTROL_PLANE_PORT=//p' "$CFG/control-plane.env" | tail -1)
 EFFECTIVE_CONTROL_PLANE_PORT=${EFFECTIVE_CONTROL_PLANE_PORT:-$CONTROL_PLANE_PORT}
 EFFECTIVE_TRAEFIK_ENTRYPOINT=$(sed -n 's/^TRAEFIK_ENTRYPOINT=//p' "$CFG/control-plane.env" | tail -1)
@@ -274,7 +294,10 @@ rm -rf "$TARGET/.venv"
 "$TARGET/.venv/bin/python" -m pip install --upgrade pip
 "$TARGET/.venv/bin/python" -m pip install -e "$TARGET"
 
-podman build --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" -t localhost/opencode-workspace:latest -f "$TARGET/Containerfile.workspace" "$TARGET"
+EFFECTIVE_OPENCODE_VERSION=$(sed -n 's/^OPENCODE_VERSION=//p' "$CFG/control-plane.env" | tail -1)
+EFFECTIVE_OPENCODE_VERSION=${EFFECTIVE_OPENCODE_VERSION:-$OPENCODE_VERSION}
+echo "Building workspace image with OpenCode $EFFECTIVE_OPENCODE_VERSION"
+podman build --build-arg "OPENCODE_VERSION=$EFFECTIVE_OPENCODE_VERSION" -t localhost/opencode-workspace:latest -f "$TARGET/Containerfile.workspace" "$TARGET"
 podman pull docker.io/library/postgres:17
 podman pull docker.io/library/traefik:v3.5
 
@@ -304,6 +327,11 @@ Authentication:
   Local username/password is enabled by default.
   Configure OIDC_* values and set OIDC_ENABLED=true for generic OIDC SSO.
   The first provisioned user receives the admin role; later users default to developer.
+
+OpenCode engine:
+  Configured version: $EFFECTIVE_OPENCODE_VERSION
+  Admins can check/build/activate OpenCode versions from Admin -> System.
+  Running workspaces are not interrupted; restart them to use a newly activated image.
 
 Capacity:
   MAX_SLOTS controls simultaneous workspace containers.

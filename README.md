@@ -1,161 +1,151 @@
-# OpenCode Multiuser 6.8.0
+# OpenCode Multiuser
 
+**Current version: 6.9.0**
 
-## Versioning
+OpenCode Multiuser turns OpenCode into a centrally managed, multi-user developer platform for enterprise and internal engineering environments. It provides authenticated access to isolated, disposable OpenCode workspaces while keeping project files and OpenCode state persistent across container restarts.
 
-OpenCode Multiuser now uses **Semantic Versioning** (`MAJOR.MINOR.PATCH`), with the current baseline at **6.8.0**. The single source of truth is `app/version.py`; Python package metadata, FastAPI/OpenAPI metadata, `/healthz`, `/version`, the portal UI, and installer output all read from that version.
+Instead of giving every developer a permanently running VM or asking users to manage OpenCode locally, the platform allocates an isolated rootless Podman container only when a workspace is needed. A central FastAPI control plane handles authentication, authorization, workspace lifecycle, routing, capacity limits, idle cleanup, and administrative controls. Traefik exposes a single portal URL, while OpenCode itself remains largely unmodified upstream software.
 
-```bash
-python3 scripts/version.py show
-python3 scripts/version.py bump patch   # 6.8.0 -> 6.8.1
-python3 scripts/version.py bump minor   # 0.1.1 -> 0.2.0
-python3 scripts/version.py bump major   # 0.2.0 -> 1.0.0
-python3 scripts/version.py set 0.3.0
-./scripts/package-release.sh        # builds dist/opencode-multiuser-<version>.zip + SHA-256
-```
+## Why this is useful for enterprises
 
-A typical release flow is:
+OpenCode is powerful because it can inspect repositories, edit files, run commands, and invoke development tools. Those same capabilities make a shared deployment difficult to operate safely without isolation, identity, lifecycle management, and governance. OpenCode Multiuser adds that missing enterprise layer.
 
-```bash
-python3 scripts/version.py bump patch
-# update CHANGELOG.md
-python3 -m pytest -q
-./scripts/package-release.sh
-```
+The platform is useful when an organization wants to provide AI-assisted development centrally while retaining control over infrastructure, source code, authentication, capacity, and runtime isolation. Typical benefits include:
 
-Use patch releases for backwards-compatible fixes, minor releases for backwards-compatible features, and major releases for incompatible changes. Record notable changes in `CHANGELOG.md`. The formal SemVer sequence continues the existing v6.x release lineage; **6.8.0** is the first release using the centralized versioning system.
+- **Centralized access** — users sign in through one internal portal instead of installing and configuring OpenCode individually.
+- **Strong workspace isolation** — every active workspace runs in its own rootless Podman container with CPU, memory, PID, capability, and filesystem restrictions.
+- **Efficient infrastructure use** — containers are created on demand and destroyed when users stop, log out, or remain idle, so capacity is not permanently reserved per user.
+- **Persistent developer state** — repositories, OpenCode data, state, and configuration survive container recreation while the runtime itself remains disposable.
+- **Enterprise identity integration** — generic OpenID Connect supports Entra ID, Keycloak, Authentik, Okta, and other standards-compliant providers, while local accounts remain available as an optional fallback.
+- **Role-based administration** — administrators can manage users, roles, account status, password resets, and active workspaces from the portal.
+- **Single ingress point** — users access one portal hostname; workspace containers are not directly exposed to the network.
+- **Controlled resource usage** — a configurable slot pool limits the number of simultaneously running workspaces.
+- **Operational clarity** — readiness checks, loading states, stale-runtime reconciliation, idle reclamation, health endpoints, and systemd integration make the platform suitable for long-running internal operation.
+- **On-premises friendly** — the system is designed for Linux, rootless Podman, systemd/Quadlet, PostgreSQL, and internal networks without requiring Kubernetes.
 
-## v6.7.1 UI fix
+The result is closer to an internal developer platform than a simple OpenCode wrapper: users get an easy browser experience, while infrastructure teams retain control of runtime boundaries and capacity.
 
-The login and registration hero panels now use dark foreground text and translucent light cards on the light-blue background for accessible contrast.
+## Key capabilities
 
-## v6.7 administrator console
-
-v6.7 adds an admin-only **User management** console at `/admin/users` on top of the v6.6 OIDC/local-auth role model. The backend enforces administrator authorization independently of the UI.
-
-Highlights:
-
-- Admin navigation is shown only to administrators.
-- Search/filter users by username, display name, email, role, and enabled/disabled state.
-- View Local vs OIDC authentication source, created time, last login, role, account status, and active workspace/slot information.
-- Promote developers to admin or demote admins with safeguards.
-- Enable/disable accounts; disabling a user also stops their active workspaces and frees their slots.
-- Stop another user's active workspaces without disabling the account.
-- Reset passwords for local accounts. OIDC credentials remain managed by the identity provider.
-- Delete local accounts only when they have no workspace history. OIDC accounts are disabled instead of deleted.
-- The current administrator cannot disable, demote, or delete their own account.
-- The last enabled administrator cannot be demoted, disabled, or deleted.
-- Existing databases are migrated automatically with a nullable `last_login_at` field; no manual SQL is required.
-
-## v6.6 authentication and registration
-
-v6.6 adds generic **OpenID Connect (OIDC)** authentication while preserving local username/password authentication as an optional fallback. Both authentication methods produce the same short-lived portal session, so workspace ownership and gateway routing do not change.
-
-Highlights:
-
-- generic OIDC discovery using `OIDC_ISSUER` (or an explicit `OIDC_DISCOVERY_URL`)
-- Authorization Code flow with signed state/nonce session handling
-- PKCE `S256` enabled by default
-- OIDC identities are keyed by `(issuer, sub)`; email and username are treated as profile data, not identity keys
-- access/refresh tokens from the identity provider are not persisted by the portal
-- optional automatic provisioning of first-time OIDC users
-- local `/register` page with 12-character minimum passwords
-- first provisioned account receives the `admin` role; later accounts default to `developer`
-- upgrades assign the oldest existing local account `admin` and existing remaining accounts `developer`
-- local login/registration can be disabled after OIDC is verified
-
-The `admin`/`developer` role is persisted and shown in the portal. v6.7 uses it to protect the administrator console and management APIs; workspace ownership remains per-user.
-
-**Bootstrap security:** the first account is intentionally privileged. Keep a fresh portal on a trusted/internal network during bootstrap. After creating the intended local accounts, set `ALLOW_REGISTRATION=false`; for SSO-only deployments also set `LOCAL_AUTH_ENABLED=false` only after OIDC has been verified.
-
-> **OIDC and HTTPS:** many enterprise identity providers require HTTPS redirect URIs for web applications. The portal can still run over HTTP for local testing, but enable TLS before integrating with providers that require secure callbacks.
-
-## v6.5 portal UI/UX redesign
-
-The Login page and Dashboard were redesigned for an enterprise/internal developer-platform experience while preserving the existing FastAPI authentication, workspace APIs, Podman lifecycle, and gateway routing.
-
-Highlights:
-
-- responsive split-layout Login page with local, subtle infrastructure/grid visuals
-- polished Dashboard with workspace cards, status badges, capacity and runtime summary cards
-- immediate staged feedback for workspace start, stop, refresh, and logout operations
-- toast notifications for successful and failed operations
-- confirmation dialog before stopping a runtime
-- accessible focus states, disabled states, labels, alerts, and reduced-motion support
-- locally served UI stylesheet: no external CDN dependency is required
-- Tailwind-style utility tokens and shadcn-inspired component patterns are bundled into the server-rendered portal, avoiding a React/Vite runtime dependency on the host
-
-
-- The injected Portal **Dashboard** link now goes directly to `/dashboard` instead of the intermediate `/_portal/dashboard` route.
-- Starting a workspace from the dashboard shows a blocking progress panel while Podman creates the container and the readiness probe waits for OpenCode.
-- Stopping a workspace shows progress while the runtime is destroyed and its slot is released.
-- Logging out shows progress while active workspaces are stopped and their slots are freed.
-- Portal Stop/Logout actions immediately show an in-widget busy state before navigation.
-
-## v6.4.3 database constraint fix
-
-v6.4.3 automatically migrates the legacy `uq_activeish_workspace` PostgreSQL constraint.
-Older versions made `(user_id, project_slug, status)` unique, which incorrectly prevented
-more than one historical `STOPPED` row for the same project and could crash startup
-reconciliation with `UniqueViolation`. The migration drops that constraint and replaces it
-with a partial unique index that applies only to `STARTING`, `RUNNING`, and `STOPPING`.
-No manual SQL migration is required. Historical stopped/error rows remain intact, while the
-dashboard shows only the newest row for each project.
-
-
-A multi-user OpenCode control plane for **rootless Podman + systemd/Quadlet + Traefik**. v6.4 routes every user through one public URL, waits for OpenCode readiness before opening a workspace, and automatically reclaims unused slots.
-
-## v6.4 management widget
-
-OpenCode HTML responses are now augmented at the gateway with a small fixed **Portal** menu. Upstream OpenCode remains unmodified. The menu provides:
-
-- **Dashboard** — return to the workspace dashboard without stopping the runtime.
-- **Stop workspace** — destroy the selected runtime, free its slot, preserve persistent data, and return to the dashboard.
-- **Logout** — stop the user's running workspaces according to `STOP_WORKSPACES_ON_LOGOUT`, clear authentication cookies, and return to the login page.
-
-The widget is injected only into `text/html` responses. Its JavaScript and CSS are served from `/_portal/widget.js` and `/_portal/widget.css`. A lightweight `/_portal/status` poll lets an already-open OpenCode page notice that an idle reaper reclaimed its workspace and redirect to the dashboard notice.
-
+- Single-host web portal for login, registration, dashboard, administration, and OpenCode access
+- Generic OIDC authentication with PKCE and optional local username/password fallback
+- First-account administrator bootstrap and `admin` / `developer` roles
+- Admin user-management console
+- Admin system console with controlled OpenCode engine updates
+- Rootless Podman workspace containers
+- systemd/Quadlet-managed PostgreSQL and Traefik services
+- One isolated runtime per active workspace
+- Persistent per-user/per-project workspace and OpenCode state
+- Configurable maximum concurrent workspace slots
+- Automatic stop-on-logout
+- Automatic idle-workspace reclamation
+- OpenCode readiness checks before opening a workspace
+- Stale-runtime reconciliation after crashes or host restarts
+- Server-side injection of OpenCode Basic Auth credentials
+- HTTP and WebSocket gateway proxying
+- Management widget injected into OpenCode with Dashboard, Stop, and Logout actions
+- Responsive enterprise portal UI with loading, error, toast, and confirmation states
+- Semantic Versioning with reproducible ZIP release packaging
 
 ## Architecture
 
 ```text
-Browser / API client
-        |
-        | http://code.example.com:8443
-        v
-     Traefik
-        |
-        v
-FastAPI control plane + authenticated gateway
-        |
-        | validate JWT/session + selected workspace
-        | inject OpenCode Basic Auth server-side
-        |
-        +--> 127.0.0.1:41001 --> slot 1 container :4096
-        +--> 127.0.0.1:41002 --> slot 2 container :4096
-        +--> 127.0.0.1:41003 --> slot 3 container :4096
-                     ...
+                         Enterprise user
+                               |
+                               | HTTP/HTTPS
+                               v
+                    +----------------------+ 
+                    |       Traefik        |
+                    |  single public host  |
+                    +----------+-----------+
+                               |
+                               v
+              +----------------------------------+
+              | FastAPI control plane / gateway |
+              |                                  |
+              | - authentication                 |
+              | - authorization                  |
+              | - user/admin management          |
+              | - workspace scheduler            |
+              | - readiness / idle cleanup       |
+              | - HTTP + WebSocket proxy         |
+              +-------------+--------------------+
+                            |
+                            | loopback-only backend ports
+            +---------------+------------------+
+            |               |                  |
+            v               v                  v
+      127.0.0.1:41001 127.0.0.1:41002   127.0.0.1:41003
+            |               |                  |
+            v               v                  v
+      +-----------+    +-----------+      +-----------+
+      | OpenCode  |    | OpenCode  |      | OpenCode  |
+      | workspace |    | workspace |      | workspace |
+      | container |    | container |      | container |
+      +-----------+    +-----------+      +-----------+
+
+              PostgreSQL stores users, slots,
+              workspace leases and metadata.
 ```
 
-Each workspace container is still isolated and disposable. Its repository, OpenCode data/state/config, and gateway runtime secret live outside the container under the owning user's persistent workspace directory.
+The browser never connects directly to a workspace container. The gateway validates the user's selected workspace, checks ownership, injects the container's private OpenCode Basic Auth credential, and proxies HTTP/WebSocket traffic to the slot's loopback-only backend port.
 
-## What changed from v5
+## Workspace lifecycle
 
-- No `w-<workspace>.BASE_DOMAIN` hostnames.
-- No wildcard DNS requirement.
-- No per-workspace Traefik dynamic router files.
-- Traefik has one router for `BASE_DOMAIN` and forwards all requests to the FastAPI gateway.
-- A workspace container publishes port 4096 **only on host loopback** using a slot port: `WORKSPACE_HOST_PORT_BASE + slot_id`.
-- The browser uses an HttpOnly `oc_session` authentication cookie and `oc_workspace` selection cookie.
-- `/open/<workspace-id>` validates ownership, selects the workspace, and redirects to `/`.
-- API clients may select a workspace with `X-OpenCode-Workspace: <workspace-id-or-container-name>`; the gateway validates ownership before routing.
-- The client routing header and gateway cookies are stripped before proxying to OpenCode.
-- The gateway injects the container's OpenCode Basic Auth credential server-side.
-- HTTP and WebSocket proxying are both supported.
-- `/workspaces/start` waits for OpenCode `/global/health` before reporting the workspace as running.
-- Logout destroys all running workspaces owned by that user and immediately returns their slots to the pool.
-- A background idle reaper destroys workspaces with no gateway activity for `WORKSPACE_IDLE_TIMEOUT_MINUTES` (30 minutes by default).
-- HTTP streaming and WebSocket traffic refresh the activity timestamp, so active generations/connections are not reclaimed.
+```text
+User starts project
+      |
+      v
+Allocate free slot
+      |
+      v
+Create fresh rootless Podman container
+      |
+      v
+Mount persistent user/project directories
+      |
+      v
+Wait for authenticated OpenCode /global/health
+      |
+      v
+Mark workspace RUNNING
+      |
+      v
+Proxy browser traffic through gateway
+      |
+      +------ user stops / logs out / becomes idle ------+
+                                                        |
+                                                        v
+                                             Destroy runtime container
+                                                        |
+                                                        v
+                                                Release slot
+                                                        |
+                                                        v
+                                         Keep persistent project state
+```
+
+`MAX_SLOTS=10` means **up to ten simultaneous workspace containers**. It does not prestart ten containers.
+
+## Security model
+
+The project is designed around disposable runtimes and explicit trust boundaries:
+
+- Workspace containers run rootless under the service account.
+- Workspace root filesystems are read-only except for explicit persistent mounts and tmpfs paths.
+- Linux capabilities are dropped and `no-new-privileges` is enabled.
+- CPU, memory, and PID limits are enforced through cgroup v2.
+- User namespaces isolate container identities from the host.
+- Workspace backend ports bind only to `127.0.0.1`.
+- OpenCode Basic Auth passwords are generated per runtime and never exposed to the browser.
+- The gateway validates workspace ownership before proxying traffic.
+- Client authentication headers and portal cookies are stripped before requests are forwarded to OpenCode.
+- Traefik does not receive the Podman socket.
+- The control plane is the only component allowed to create and destroy workspace runtimes.
+- OIDC access and refresh tokens are not persisted by the portal.
+- Administrative actions are protected by backend role checks, not only hidden UI elements.
+
+For production use, enable HTTPS at Traefik and restrict direct access to the control-plane port with the host firewall.
 
 ## Requirements
 
@@ -163,17 +153,21 @@ Each workspace container is still isolated and disposable. Its repository, OpenC
 - Podman 5.x+
 - systemd user services / Quadlet
 - Python 3.11+
-- `openssl`, `rsync`
-- delegated `cpu`, `memory`, and `pids` controllers for the rootless user
-- one DNS A/AAAA record: `code.example.com -> host`
+- PostgreSQL container support through Podman
+- `openssl`
+- `rsync`
+- delegated `cpu`, `memory`, and `pids` cgroup controllers for the rootless service user
+- one DNS A/AAAA record for the portal hostname
 
-Check the host before installation:
+Run the supplied host preflight before installation:
 
 ```bash
 ./scripts/check-host.sh
 ```
 
-Rootless user setup, as root:
+### Rootless service-user setup
+
+As root:
 
 ```bash
 loginctl enable-linger llm_apps
@@ -182,7 +176,7 @@ systemctl start user-runtime-dir@${UID_LLM}.service
 systemctl start user@${UID_LLM}.service
 ```
 
-If cgroup controllers are not delegated, a typical host override is:
+If the required cgroup controllers are not delegated, a typical systemd override is:
 
 ```ini
 # /etc/systemd/system/user@.service.d/delegate.conf
@@ -190,7 +184,7 @@ If cgroup controllers are not delegated, a typical host override is:
 Delegate=cpu cpuset io memory pids
 ```
 
-then:
+Then:
 
 ```bash
 systemctl daemon-reload
@@ -199,46 +193,68 @@ systemctl restart user@$(id -u llm_apps).service
 
 Log in again as the rootless service user afterward.
 
-## Install
+## Installation
 
 ```bash
-unzip opencode-multiuser-6.8.0.zip
-cd opencode-multiuser-6.8.0
+unzip opencode-multiuser-6.9.0.zip
+cd opencode-multiuser-6.9.0
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
 ```
 
-By default:
+The installer configures:
+
+```text
+~/.config/containers/systemd/
+  opencode.network
+  postgres.container
+  postgres-data.volume
+  traefik.container
+
+~/.config/systemd/user/
+  opencode-control-plane.service
+
+~/.config/opencode-multiuser/
+  control-plane.env
+  postgres.env
+  traefik.yml
+
+~/.local/share/opencode-multiuser/
+  users/
+  traefik-dynamic/
+```
+
+Default listeners are:
 
 ```text
 Traefik public HTTP:         :8080 and :8443
-Gateway/Uvicorn:             :8010
+Control plane / gateway:     :8010
 Workspace loopback base:     41000
 Slot 1 OpenCode backend:     127.0.0.1:41001
 Slot 2 OpenCode backend:     127.0.0.1:41002
 ...
 ```
 
-`8443` is plain HTTP until TLS is explicitly configured.
+Port `8443` is plain HTTP until TLS is explicitly configured.
 
-The gateway binds `CONTROL_PLANE_BIND=0.0.0.0` so the Traefik container can reach `host.containers.internal:8010`. Keep the direct control-plane port blocked from untrusted networks with the host firewall; the intended public entry point is Traefik.
+The gateway normally binds `CONTROL_PLANE_BIND=0.0.0.0` so the Traefik container can reach `host.containers.internal:<CONTROL_PLANE_PORT>`. Restrict that port with the host firewall; Traefik should be the intended public ingress.
 
-## Persistent configuration
+## Configuration
 
-The installer writes:
+The primary runtime configuration is:
 
 ```text
 ~/.config/opencode-multiuser/control-plane.env
-~/.config/opencode-multiuser/postgres.env
 ```
 
-Important v6 settings:
+Common settings:
 
 ```bash
 CONTROL_PLANE_BIND=0.0.0.0
 CONTROL_PLANE_PORT=8010
 CONTROL_PLANE_URL=http://code-test.example.org:8443
+
 MAX_SLOTS=10
 WORKSPACE_HOST_PORT_BASE=41000
 WORKSPACE_READY_TIMEOUT_SECONDS=45
@@ -246,15 +262,19 @@ WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5
 WORKSPACE_IDLE_TIMEOUT_MINUTES=30
 WORKSPACE_REAPER_INTERVAL_SECONDS=60
 STOP_WORKSPACES_ON_LOGOUT=true
+
+WORKSPACE_IMAGE=localhost/opencode-workspace:latest
+OPENCODE_VERSION=1.18.30
+OPENCODE_REGISTRY_URL=https://registry.npmjs.org/opencode-ai/latest
+OPENCODE_UPDATE_TIMEOUT_SECONDS=900
+
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
 
-# Local auth / registration
 LOCAL_AUTH_ENABLED=true
 ALLOW_REGISTRATION=true
 
-# Generic OIDC (disabled until configured)
 OIDC_ENABLED=false
 OIDC_ISSUER=
 OIDC_DISCOVERY_URL=
@@ -268,33 +288,45 @@ OIDC_AUTO_PROVISION=true
 OIDC_DEFAULT_ROLE=developer
 ```
 
-`MAX_SLOTS=10` means at most ten simultaneous workspace containers. It does **not** prestart ten containers.
+When serving the portal over plain HTTP, keep `COOKIE_SECURE=false`. Set it to `true` only after the public endpoint is genuinely HTTPS.
 
-## Browser test
+## Authentication
 
-Open:
+### Local accounts
 
-```text
-http://code-test.example.org:8443/login
-```
+Local authentication is enabled by default.
 
-For a fresh local-auth installation, open:
+Registration:
 
 ```text
 http://code-test.example.org:8443/register
 ```
 
-The first account receives the **Admin** role automatically. Later registrations receive **Developer**. Then sign in through `/login`. `/dashboard` lets you start, open, and stop workspaces.
+Login:
 
-## Configure generic OIDC
+```text
+http://code-test.example.org:8443/login
+```
 
-Register the portal as a web/OpenID Connect client in your identity provider. Use this callback URI (adjust host/port/TLS):
+The first account provisioned in an empty database receives the **Admin** role. Later users default to **Developer**.
+
+For an internal deployment, create the intended bootstrap administrator first and then consider disabling open registration:
+
+```bash
+ALLOW_REGISTRATION=false
+```
+
+### Generic OIDC
+
+The portal supports standards-compliant OpenID Connect providers such as Microsoft Entra ID, Keycloak, Authentik, Okta, and others.
+
+Register the portal as an OIDC web client and configure a callback similar to:
 
 ```text
 http://code-test.example.org:8443/auth/oidc/callback
 ```
 
-Then edit `~/.config/opencode-multiuser/control-plane.env`:
+Then configure:
 
 ```bash
 OIDC_ENABLED=true
@@ -308,34 +340,158 @@ OIDC_AUTO_PROVISION=true
 OIDC_DEFAULT_ROLE=developer
 ```
 
-`OIDC_DISCOVERY_URL` normally stays empty; the portal derives `/.well-known/openid-configuration` from the issuer. Set it only for providers with a nonstandard discovery URL. `OIDC_REDIRECT_URI` also normally stays empty and is derived from `CONTROL_PLANE_URL`.
+`OIDC_DISCOVERY_URL` normally stays empty because the portal derives the provider metadata URL from `OIDC_ISSUER`. `OIDC_REDIRECT_URI` also normally stays empty and is derived from `CONTROL_PLANE_URL`.
 
-Restart the control plane after changing authentication configuration:
+After configuration:
 
 ```bash
 systemctl --user restart opencode-control-plane.service
 ```
 
-The login page will display an SSO button. To make the portal SSO-only after testing:
+Once OIDC has been verified from a separate browser session, an SSO-only deployment can use:
 
 ```bash
 LOCAL_AUTH_ENABLED=false
 ALLOW_REGISTRATION=false
 ```
 
-Do not disable local authentication until OIDC login has been verified from a separate browser session.
+Do not disable local authentication before confirming that OIDC works; otherwise a configuration error could lock out administrators.
 
-### OIDC account provisioning
+OIDC identities use `(issuer, sub)` as the immutable identity key. Email, display name, and preferred username are profile attributes rather than identity keys. OIDC access and refresh tokens are not stored by the portal.
 
-On first OIDC login the portal uses the provider's `sub` claim together with `OIDC_ISSUER` as the immutable identity. `preferred_username`, `email`, and `name` are copied as profile attributes when available. If `OIDC_AUTO_PROVISION=false`, unknown OIDC identities are rejected.
+## Roles and administration
 
-The first account ever provisioned in an empty database becomes `admin`, whether it was created from `/register` or through OIDC. All later accounts use `OIDC_DEFAULT_ROLE` (default `developer`).
+The portal currently defines two roles:
 
-## API test
+- **Admin** — user administration plus normal workspace access
+- **Developer** — normal workspace access
 
-Login and obtain a bearer token:
+Admins can open:
+
+```text
+/admin/users
+/admin/system
+```
+
+`/admin/users` provides user and role management. `/admin/system` provides portal/OpenCode version visibility and the controlled OpenCode image update workflow described below.
+
+The user-management console supports:
+
+- searching and filtering users
+- viewing Local versus OIDC authentication source
+- viewing role, account status, created time, last login, and active workspaces
+- promoting developers to admin
+- demoting admins with safeguards
+- enabling and disabling accounts
+- stopping another user's active workspaces
+- resetting local-account passwords
+- deleting eligible local accounts
+
+Safety rules prevent an administrator from disabling, demoting, or deleting themselves, and prevent removal of the last enabled administrator.
+
+## Dashboard and workspace usage
+
+After login, users are sent to:
+
+```text
+/dashboard
+```
+
+The dashboard shows project/workspace cards, runtime status, slot availability, and available actions.
+
+Typical statuses include:
+
+```text
+STARTING
+RUNNING
+STOPPING
+STOPPED
+ERROR
+```
+
+Starting, stopping, and logout operations provide immediate loading/progress feedback so users can see that the action was accepted.
+
+When a workspace is open, the gateway injects a small **Portal** control into the OpenCode page with:
+
+- Dashboard
+- Stop workspace
+- Logout
+
+Upstream OpenCode itself is not modified.
+
+## Workspace readiness and recovery
+
+A container reporting `Up` does not guarantee OpenCode is ready to accept requests. The control plane therefore polls the authenticated OpenCode health endpoint before marking a workspace `RUNNING`.
+
+Defaults:
 
 ```bash
+WORKSPACE_READY_TIMEOUT_SECONDS=45
+WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5
+```
+
+If OpenCode never becomes healthy, the new runtime is removed and the slot is returned rather than exposing a transient broken workspace.
+
+The control plane also reconciles workspace records against actual Podman runtimes at startup and during housekeeping. Missing containers or runtimes without their expected loopback mapping are marked stale, cleaned up, and their slots released.
+
+## Automatic slot reclamation
+
+Capacity is reclaimed in two ways.
+
+### Logout cleanup
+
+With:
+
+```bash
+STOP_WORKSPACES_ON_LOGOUT=true
+```
+
+logging out stops the user's active workspace containers and returns their slots immediately. Persistent project/OpenCode data is retained.
+
+### Idle timeout
+
+The gateway records workspace activity during HTTP requests, streamed responses, WebSocket activity, and workspace open/start operations. A background reaper stops workspaces that have remained inactive longer than:
+
+```bash
+WORKSPACE_IDLE_TIMEOUT_MINUTES=30
+```
+
+The reaper runs every:
+
+```bash
+WORKSPACE_REAPER_INTERVAL_SECONDS=60
+```
+
+Set the timeout to `0` to disable idle cleanup.
+
+After an idle timeout, browser navigation returns the user to the dashboard with an explanation that the runtime was reclaimed. API traffic receives a machine-readable conflict response, and stale WebSockets are closed cleanly.
+
+## Persistent workspace storage
+
+Each user/project has persistent storage outside the disposable runtime container:
+
+```text
+~/.local/share/opencode-multiuser/users/<user-id>/<project>/
+├── workspace/
+├── opencode-data/
+├── opencode-state/
+├── opencode-config/
+├── runtime-secret
+├── last-activity
+└── stop-reason
+```
+
+The OpenCode cache remains ephemeral in tmpfs.
+
+Stopping or recreating a container does not delete the project workspace or OpenCode state.
+
+## API usage
+
+Local-auth API clients can obtain a bearer token:
+
+```bash
+CP=http://127.0.0.1:8010
+
 TOKEN=$(
   curl -sS -X POST "$CP/auth/login" \
     -H 'content-type: application/json' \
@@ -353,13 +509,13 @@ curl -sS -X POST "$CP/workspaces/start" \
   -d '{"project_slug":"rag-project"}' | jq
 ```
 
-The response now contains a URL such as:
+The response includes a URL such as:
 
 ```text
 http://code-test.example.org:8443/open/<workspace-id>
 ```
 
-For an API request directly through the gateway, select the workspace with a validated header:
+API clients can route through the single-host gateway with:
 
 ```bash
 curl -sS \
@@ -368,116 +524,194 @@ curl -sS \
   http://code-test.example.org:8443/global/health | jq
 ```
 
-The gateway verifies that the workspace is running and belongs to the authenticated user. It does not trust the header as an unrestricted container destination.
+The gateway validates that the selected workspace is running and belongs to the authenticated user. The header is never treated as an unrestricted container destination.
 
-## Workspace storage
+## Operations and troubleshooting
 
-```text
-~/.local/share/opencode-multiuser/users/<user-id>/<project>/
-├── workspace/
-├── opencode-data/
-├── opencode-state/
-├── opencode-config/
-└── runtime-secret       # mode 0600; OpenCode Basic Auth secret
-```
-
-The OpenCode cache remains ephemeral in tmpfs.
-
-## Upgrade from v5
-
-v6 preserves PostgreSQL and the existing user/project storage. v6.6 also migrates existing users with role/provider fields and makes `password_hash` nullable so OIDC-only accounts do not require a local password. The installer removes old `workspace-*.yml` Traefik route files.
-
-Existing v5 workspace containers lack the v6 loopback port mapping and `runtime-secret`. They appear in the dashboard with an **Upgrade workspace** action instead of **Open**. That action calls `/workspaces/start`, which automatically recycles the old container and recreates it in v6 gateway mode.
-
-After upgrading, only this DNS record is required:
-
-```text
-code-test.example.org -> host
-```
-
-The old wildcard `*.code-test.example.org` record may remain, but v6 does not use it.
-
-## Automatic slot reclamation
-
-Two mechanisms keep capacity from being stranded:
-
-1. **Logout cleanup** — `/logout` stops every `starting`/`running` workspace for the authenticated user, destroys its disposable container, and returns the slot to the pool. Persistent project/OpenCode data is not deleted. Disable this behavior with `STOP_WORKSPACES_ON_LOGOUT=false`.
-2. **Idle timeout** — the gateway touches `last-activity` in each workspace directory on HTTP requests, streamed response chunks, WebSocket connect/messages, and workspace open/start. The reaper checks running workspaces every `WORKSPACE_REAPER_INTERVAL_SECONDS` and stops those idle longer than `WORKSPACE_IDLE_TIMEOUT_MINUTES`. Set the timeout to `0` to disable idle cleanup.
-
-The activity file lives alongside the persistent workspace data:
-
-```text
-~/.local/share/opencode-multiuser/users/<user-id>/<project>/last-activity
-```
-
-For testing you can use a short timeout, for example:
+Useful checks:
 
 ```bash
-WORKSPACE_IDLE_TIMEOUT_MINUTES=2
-WORKSPACE_REAPER_INTERVAL_SECONDS=10
-```
+systemctl --user status \
+  postgres.service \
+  traefik.service \
+  opencode-control-plane.service
 
-then restart the control plane. For normal use, 30–60 minutes is a more practical default.
-
-## Workspace readiness
-
-A Podman container being `Up` does not mean OpenCode is already accepting connections. v6.4 therefore polls the authenticated OpenCode health endpoint on the slot's loopback port and only changes the database status to `running` after health succeeds. Defaults:
-
-```bash
-WORKSPACE_READY_TIMEOUT_SECONDS=45
-WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5
-```
-
-If OpenCode exits or never becomes healthy, the just-created container is removed and the slot is returned instead of sending the browser into a transient `502 OpenCode backend unavailable` error.
-
-## Security notes
-
-- The browser never receives the OpenCode Basic Auth password.
-- Workspace backend ports bind only to `127.0.0.1`.
-- Workspace selection is authorization-checked against the logged-in user.
-- Client `Authorization` is replaced with OpenCode Basic Auth before forwarding.
-- Gateway session/workspace cookies are stripped before forwarding to OpenCode.
-- Containers remain read-only except for explicit persistent mounts and tmpfs paths.
-- CPU, memory, PID, capability, and user-namespace restrictions remain enabled.
-- Keep port `8010` blocked externally because it bypasses Traefik as an ingress layer.
-- Enable HTTPS before sending credentials/source code over an untrusted network.
-
-## Useful checks
-
-```bash
-systemctl --user status postgres.service traefik.service opencode-control-plane.service
 podman ps
 curl http://127.0.0.1:8010/healthz
+curl http://127.0.0.1:8010/version
 ss -ltn | grep -E ':(8010|8080|8443|4100[0-9])\\b'
 ```
 
-Expected health response:
+A healthy response includes the application version and gateway mode.
 
-```json
-{"ok":true,"mode":"single-host-gateway"}
+Application logs:
+
+```bash
+journalctl --user -u opencode-control-plane.service -n 200 --no-pager
 ```
 
+Workspace containers:
 
-### HTTP cookie note
+```bash
+podman ps --filter 'name=oc-'
+podman logs <workspace-container>
+```
 
-When Traefik is serving plain HTTP (`TRAEFIK_TLS=false`), keep `COOKIE_SECURE=false`. Set it to `true` only after the public gateway is actually HTTPS. This setting is intentionally independent from `CONTROL_PLANE_URL` so upgrades from older configurations do not break browser login cookies.
+## Updating OpenCode itself
 
+The **portal version** and the **OpenCode engine version** are independent. Upgrading OpenCode Multiuser does not require every OpenCode engine update to be a new portal release.
 
-## Idle-timeout browser UX (v6.4)
-
-When the reaper stops a workspace because it exceeded `WORKSPACE_IDLE_TIMEOUT_MINUTES`, it writes a small per-project `stop-reason` marker. Authentication remains valid. On the next top-level browser request for that selected workspace, the gateway clears the stale workspace-selection cookie and redirects to:
+The configured OpenCode engine version is persisted in:
 
 ```text
-/dashboard?reason=idle&workspace=<project-slug>
+~/.config/opencode-multiuser/control-plane.env
 ```
 
-The dashboard displays a notice explaining that the workspace was reclaimed and its slot was freed. Non-navigation API/XHR requests receive HTTP `409` with a machine-readable `workspace_idle_timeout` detail, while stale WebSockets are closed with code `4409`. Manual stops, logout cleanup, and runtime recycling use different stop reasons and do not masquerade as idle timeouts.
+using:
 
-## v6.4.1 upgrade integrity check
+```bash
+OPENCODE_VERSION=1.18.30
+```
 
-The installer now verifies that `app/portal.py` exists both in the extracted release tree and in the installed target before restarting the control plane. This prevents a partial v6.4 upgrade from leaving `gateway.py` installed without its portal module.
+### Recommended: Admin → System
 
+Administrators can open:
 
-## v6.4.2 stale-runtime reconciliation
+```text
+/admin/system
+```
 
-The control plane now reconciles RUNNING/STARTING/STOPPING database leases against Podman at startup and during housekeeping. If a container is missing or no longer publishes its expected `127.0.0.1:4100x -> 4096` port, the stale runtime is stopped/released and its slot is returned. Browser navigation is redirected to the dashboard with a recovery notice instead of returning `502 OpenCode backend unavailable`.
+The System page shows:
+
+- OpenCode Multiuser portal version
+- configured OpenCode version
+- version currently installed in `localhost/opencode-workspace:latest`
+- upstream OpenCode version from the npm registry
+- current image update/build state and log output
+
+Use **Check latest** to query the configured registry and **Build & activate** to update to a chosen semantic version.
+
+The update is deliberately transactional:
+
+```text
+request version
+      |
+      v
+build localhost/opencode-workspace:<version>
+      |
+      v
+run `opencode --version` smoke test
+      |
+      +---- failure ----> keep current `latest` image unchanged
+      |
+      v
+retag tested candidate as localhost/opencode-workspace:latest
+      |
+      v
+persist OPENCODE_VERSION in control-plane.env
+```
+
+The build runs in the background so the admin page remains responsive and can poll progress. Only administrators can start or inspect the update workflow.
+
+**Running workspaces are not interrupted.** A container that is already running continues using the image it started with. Stop and start that workspace when you want it to use the newly activated OpenCode image.
+
+### CLI/manual update
+
+The same safe workflow can be performed manually. Example for `1.18.31`:
+
+```bash
+cd ~/opt/opencode-multiuser
+TARGET_VERSION=1.18.31
+
+podman build \
+  --build-arg "OPENCODE_VERSION=${TARGET_VERSION}" \
+  -t "localhost/opencode-workspace:${TARGET_VERSION}" \
+  -f Containerfile.workspace .
+
+podman run --rm \
+  "localhost/opencode-workspace:${TARGET_VERSION}" \
+  --version
+
+podman tag \
+  "localhost/opencode-workspace:${TARGET_VERSION}" \
+  localhost/opencode-workspace:latest
+
+sed -i \
+  "s/^OPENCODE_VERSION=.*/OPENCODE_VERSION=${TARGET_VERSION}/" \
+  ~/.config/opencode-multiuser/control-plane.env
+
+systemctl --user restart opencode-control-plane.service
+```
+
+Alternatively, the installer honors an explicit version:
+
+```bash
+OPENCODE_VERSION=1.18.31 \
+PYTHON_BIN=python3.11 \
+./scripts/install.sh
+```
+
+On later upgrades, `install.sh` reuses the persisted `OPENCODE_VERSION` unless `OPENCODE_VERSION` is explicitly supplied in the shell.
+
+## Versioning and releases
+
+OpenCode Multiuser follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`). The single source of truth is:
+
+```text
+app/version.py
+```
+
+The Python package metadata, FastAPI/OpenAPI metadata, `/healthz`, `/version`, portal UI, and installer all read from this version.
+
+Show or change the version:
+
+```bash
+python3 scripts/version.py show
+python3 scripts/version.py bump patch   # 6.9.0 -> 6.9.1
+python3 scripts/version.py bump minor   # 6.9.0 -> 6.10.0
+python3 scripts/version.py bump major   # 6.9.0 -> 7.0.0
+python3 scripts/version.py set 6.10.0
+```
+
+Build a release archive and checksum:
+
+```bash
+./scripts/package-release.sh
+```
+
+which creates:
+
+```text
+dist/opencode-multiuser-<version>.zip
+dist/opencode-multiuser-<version>.zip.sha256
+```
+
+A typical release flow is:
+
+```bash
+python3 scripts/version.py bump patch
+# update CHANGELOG.md
+python3 -m pytest -q
+./scripts/package-release.sh
+```
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history and detailed evolution of the project.
+
+## Production recommendations
+
+Before exposing the portal beyond a controlled test network:
+
+- enable HTTPS at Traefik
+- set `COOKIE_SECURE=true`
+- integrate with corporate OIDC/SSO
+- disable open registration after bootstrap
+- disable local authentication if organizational policy requires SSO-only access
+- restrict direct access to the control-plane port
+- review outbound network access for workspace containers
+- use short-lived Git credentials or a credential broker rather than mounting host SSH keys
+- monitor slot usage, memory, CPU, and workspace lifecycle events
+- back up PostgreSQL and persistent workspace storage
+
+## Release history
+
+Detailed feature-by-feature changes have intentionally been moved out of this README. See [`CHANGELOG.md`](CHANGELOG.md) for the full history from the earliest prototype through version 6.9.0.

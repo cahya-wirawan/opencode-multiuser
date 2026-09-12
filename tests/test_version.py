@@ -11,7 +11,7 @@ SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 
 def test_application_version_is_semver():
-    assert __version__ == "6.8.0"
+    assert __version__ == "6.9.0"
     assert SEMVER_RE.fullmatch(__version__)
 
 
