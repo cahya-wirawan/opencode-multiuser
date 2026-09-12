@@ -47,6 +47,27 @@ The result is closer to an internal developer platform than a simple OpenCode wr
 - Responsive enterprise portal UI with loading, error, toast, and confirmation states
 - Semantic Versioning with reproducible ZIP release packaging
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="50%"><strong>Login panel</strong></td>
+    <td align="center" width="50%"><strong>System administration</strong></td>
+  </tr>
+  <tr>
+    <td><img src="images/login-panel.jpg" alt="OpenCode Multiuser login panel" width="100%"></td>
+    <td><img src="images/systems-administration.jpg" alt="OpenCode Multiuser system administration" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><strong>User management</strong></td>
+    <td align="center" width="50%"><strong>User workspaces</strong></td>
+  </tr>
+  <tr>
+    <td><img src="images/user-management.jpg" alt="OpenCode Multiuser user management" width="100%"></td>
+    <td><img src="images/user-workspaces.jpg" alt="OpenCode Multiuser user workspaces" width="100%"></td>
+  </tr>
+</table>
+
 ## Architecture
 
 ```text
