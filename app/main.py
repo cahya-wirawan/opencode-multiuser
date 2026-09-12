@@ -35,6 +35,7 @@ from .schemas import (
 )
 from .security import current_user, hash_password, issue_token, load_user_from_token, require_admin, role_for_new_user, verify_password
 from .traefik import cleanup_legacy_workspace_routes, workspace_open_url
+from .version import __version__
 from .oidc import oidc_client, provision_oidc_user
 
 
@@ -305,7 +306,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.6.7",
+    version=__version__,
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
@@ -323,7 +324,12 @@ app.add_middleware(
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True, "mode": "single-host-gateway"}
+    return {"ok": True, "mode": "single-host-gateway", "version": __version__}
+
+
+@app.get("/version")
+def version_info():
+    return {"name": "opencode-multiuser", "version": __version__}
 
 
 @app.post("/auth/register", response_model=TokenResponse)

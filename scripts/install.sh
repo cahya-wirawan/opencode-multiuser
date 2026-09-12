@@ -14,7 +14,7 @@ SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
 # v6.4+ requires the portal injection module. Refuse to perform a partial
 # upgrade if the extracted source tree is incomplete.
-for required_file in app/portal.py app/ui.py app/oidc.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py app/version.py; do
   if [[ ! -f "$SELF_DIR/$required_file" ]]; then
     echo "ERROR: $SELF_DIR/$required_file is missing." >&2
     echo "Extract the complete release archive and run install.sh from that tree." >&2
@@ -44,6 +44,9 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 echo "Using Python: $PYTHON_BIN ($($PYTHON_BIN --version 2>&1))"
+APP_VERSION=$(sed -n 's/^__version__[[:space:]]*=[[:space:]]*"\([^"]*\)"/\1/p' "$SELF_DIR/app/version.py" | head -1)
+[[ -n "$APP_VERSION" ]] || { echo "ERROR: unable to read app version" >&2; exit 1; }
+echo "OpenCode Multiuser version: $APP_VERSION"
 
 USER_UID=$(id -u)
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/${USER_UID}}
@@ -134,7 +137,7 @@ fi
 
 rsync -a --delete --exclude .venv --exclude .pytest_cache "$SELF_DIR/" "$TARGET/"
 
-for required_file in app/portal.py app/ui.py app/oidc.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py app/version.py; do
   if [[ ! -f "$TARGET/$required_file" ]]; then
     echo "ERROR: upgrade copy is incomplete: $TARGET/$required_file was not installed." >&2
     exit 1
@@ -282,7 +285,7 @@ systemctl --user enable opencode-control-plane.service
 systemctl --user restart opencode-control-plane.service
 
 cat <<MSG
-Installed OpenCode Multiuser v6.7 (OIDC/local auth + admin user management).
+Installed OpenCode Multiuser $APP_VERSION (OIDC/local auth + admin user management).
 
 Public gateway:
   http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT

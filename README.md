@@ -1,4 +1,33 @@
-# OpenCode Multiuser v6.7 — Admin user management
+# OpenCode Multiuser 6.8.0
+
+
+## Versioning
+
+OpenCode Multiuser now uses **Semantic Versioning** (`MAJOR.MINOR.PATCH`), with the current baseline at **6.8.0**. The single source of truth is `app/version.py`; Python package metadata, FastAPI/OpenAPI metadata, `/healthz`, `/version`, the portal UI, and installer output all read from that version.
+
+```bash
+python3 scripts/version.py show
+python3 scripts/version.py bump patch   # 6.8.0 -> 6.8.1
+python3 scripts/version.py bump minor   # 0.1.1 -> 0.2.0
+python3 scripts/version.py bump major   # 0.2.0 -> 1.0.0
+python3 scripts/version.py set 0.3.0
+./scripts/package-release.sh        # builds dist/opencode-multiuser-<version>.zip + SHA-256
+```
+
+A typical release flow is:
+
+```bash
+python3 scripts/version.py bump patch
+# update CHANGELOG.md
+python3 -m pytest -q
+./scripts/package-release.sh
+```
+
+Use patch releases for backwards-compatible fixes, minor releases for backwards-compatible features, and major releases for incompatible changes. Record notable changes in `CHANGELOG.md`. The formal SemVer sequence continues the existing v6.x release lineage; **6.8.0** is the first release using the centralized versioning system.
+
+## v6.7.1 UI fix
+
+The login and registration hero panels now use dark foreground text and translucent light cards on the light-blue background for accessible contrast.
 
 ## v6.7 administrator console
 
@@ -173,8 +202,8 @@ Log in again as the rootless service user afterward.
 ## Install
 
 ```bash
-unzip opencode-multiuser-fixed-v6.7.zip
-cd opencode-multiuser-fixed-v6.7
+unzip opencode-multiuser-6.8.0.zip
+cd opencode-multiuser-6.8.0
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
