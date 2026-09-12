@@ -243,7 +243,7 @@ systemctl --user enable opencode-control-plane.service
 systemctl --user restart opencode-control-plane.service
 
 cat <<MSG
-Installed OpenCode Multiuser v6.4.1 (single-host gateway).
+Installed OpenCode Multiuser v6.4.4 (single-host gateway).
 
 Public gateway:
   http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT

@@ -1,4 +1,13 @@
-# OpenCode Multiuser v6.4 — single-host gateway
+# OpenCode Multiuser v6.4.4 — single-host gateway
+
+
+## v6.4.4 portal navigation and action feedback
+
+- The injected Portal **Dashboard** link now goes directly to `/dashboard` instead of the intermediate `/_portal/dashboard` route.
+- Starting a workspace from the dashboard shows a blocking progress panel while Podman creates the container and the readiness probe waits for OpenCode.
+- Stopping a workspace shows progress while the runtime is destroyed and its slot is released.
+- Logging out shows progress while active workspaces are stopped and their slots are freed.
+- Portal Stop/Logout actions immediately show an in-widget busy state before navigation.
 
 ## v6.4.3 database constraint fix
 
@@ -110,8 +119,8 @@ Log in again as the rootless service user afterward.
 ## Install
 
 ```bash
-unzip opencode-multiuser-fixed-v6.4.zip
-cd opencode-multiuser-fixed-v6.4
+unzip opencode-multiuser-fixed-v6.4.4.zip
+cd opencode-multiuser-fixed-v6.4.4
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh

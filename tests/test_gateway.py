@@ -88,6 +88,8 @@ def test_portal_widget_injection():
     assert 'id="oc-mu-portal"' in out
     assert '/_portal/widget.js' in out
     assert '/_portal/widget.css' in out
+    assert 'href="/dashboard"' in out
+    assert '/_portal/dashboard' not in out
     assert out.index('id="oc-mu-portal"') < out.lower().rindex('</body>')
 
 
