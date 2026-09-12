@@ -1,7 +1,21 @@
-# OpenCode Multiuser v6.4.4 — single-host gateway
+# OpenCode Multiuser v6.5 — single-host gateway
 
 
-## v6.4.4 portal navigation and action feedback
+## v6.5 portal UI/UX redesign
+
+The Login page and Dashboard were redesigned for an enterprise/internal developer-platform experience while preserving the existing FastAPI authentication, workspace APIs, Podman lifecycle, and gateway routing.
+
+Highlights:
+
+- responsive split-layout Login page with local, subtle infrastructure/grid visuals
+- polished Dashboard with workspace cards, status badges, capacity and runtime summary cards
+- immediate staged feedback for workspace start, stop, refresh, and logout operations
+- toast notifications for successful and failed operations
+- confirmation dialog before stopping a runtime
+- accessible focus states, disabled states, labels, alerts, and reduced-motion support
+- locally served UI stylesheet: no external CDN dependency is required
+- Tailwind-style utility tokens and shadcn-inspired component patterns are bundled into the server-rendered portal, avoiding a React/Vite runtime dependency on the host
+
 
 - The injected Portal **Dashboard** link now goes directly to `/dashboard` instead of the intermediate `/_portal/dashboard` route.
 - Starting a workspace from the dashboard shows a blocking progress panel while Podman creates the container and the readiness probe waits for OpenCode.
@@ -119,8 +133,8 @@ Log in again as the rootless service user afterward.
 ## Install
 
 ```bash
-unzip opencode-multiuser-fixed-v6.4.4.zip
-cd opencode-multiuser-fixed-v6.4.4
+unzip opencode-multiuser-fixed-v6.5.zip
+cd opencode-multiuser-fixed-v6.5
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh

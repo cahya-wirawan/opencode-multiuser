@@ -16,6 +16,7 @@ from .gateway import proxy_http, proxy_websocket, selected_workspace_for_request
 from .models import Slot, User, Workspace, WorkspaceStatus
 from .migrations import drop_legacy_workspace_constraint, ensure_active_workspace_index
 from .portal import PORTAL_CSS, PORTAL_JS
+from .ui import APP_CSS, dashboard_page_html, login_page_html
 from .runtime import (
     container_running,
     container_has_workspace_port,
@@ -238,7 +239,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.3.4.4",
+    version="0.6.5",
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
@@ -289,101 +290,51 @@ def logout(request: Request, db: Session = Depends(get_db)):
     return response
 
 
+@app.get("/_ui/app.css", response_class=PlainTextResponse)
+def app_ui_css():
+    return PlainTextResponse(APP_CSS, media_type="text/css", headers={"Cache-Control": "no-store"})
+
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
-    return HTMLResponse(
-        """<!doctype html>
-<html><head><meta charset="utf-8"><title>OpenCode Login</title>
-<style>body{font-family:system-ui;max-width:520px;margin:10vh auto;padding:24px}input,button{font:inherit;padding:10px;margin:6px 0;width:100%;box-sizing:border-box}.error{color:#b00}</style></head>
-<body><h1>OpenCode</h1><p>Sign in to the multi-user gateway.</p>
-<form id="login"><input id="username" placeholder="Username" autocomplete="username" required>
-<input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
-<button>Sign in</button></form><p id="error" class="error"></p>
-<script>
-document.getElementById('login').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const r = await fetch('/auth/login', {method:'POST', headers:{'content-type':'application/json'},
-    body: JSON.stringify({username:document.getElementById('username').value,password:document.getElementById('password').value})});
-  if (r.ok) location.href='/dashboard'; else document.getElementById('error').textContent=(await r.json()).detail || 'Login failed';
-});
-</script></body></html>"""
-    )
+    return HTMLResponse(login_page_html())
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, user: User = Depends(current_user)):
-    username = escape(user.username)
+def dashboard(
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     reason = request.query_params.get("reason")
     project = escape(request.query_params.get("workspace", ""))
     notice = ""
     if reason == "idle":
-        name = f" <b>{project}</b>" if project else ""
+        name = f" <strong>{project}</strong>" if project else ""
         notice = (
-            f'<div class="notice">Workspace{name} was stopped after '
-            f'{settings.workspace_idle_timeout_minutes} minutes of inactivity. '
-            'Its slot has been freed. Start the project again to continue.</div>'
+            f'<div class="ui-alert" style="margin-bottom:1rem">'
+            f'Workspace{name} was stopped after {settings.workspace_idle_timeout_minutes} minutes of inactivity. '
+            'Its runtime slot has been freed; start it again whenever you are ready.</div>'
         )
     elif reason == "backend":
-        name = f" <b>{project}</b>" if project else ""
+        name = f" <strong>{project}</strong>" if project else ""
         notice = (
-            f'<div class="notice">Workspace{name} runtime was no longer reachable. '
-            'Its stale slot has been freed. Start the project again to recreate the runtime.</div>'
+            f'<div class="ui-alert" style="margin-bottom:1rem">'
+            f'Workspace{name} runtime was no longer reachable. Its stale slot was released safely. '
+            'Start the project again to recreate the runtime.</div>'
         )
+
+    slots = db.scalars(select(Slot).order_by(Slot.id)).all()
+    total_slots = len(slots)
+    free_slots = sum(1 for slot in slots if not slot.in_use)
     response = HTMLResponse(
-        f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>OpenCode Workspaces</title>
-<style>
-body{{font-family:system-ui;max-width:900px;margin:40px auto;padding:20px}}
-button,input{{font:inherit;padding:8px}}button{{cursor:pointer}}button:disabled{{cursor:wait;opacity:.65}}
-.ws{{padding:12px;border:1px solid #ddd;margin:8px 0;border-radius:8px}}
-.notice{{padding:12px 14px;background:#fff7d6;border:1px solid #d7b84b;border-radius:8px;margin:14px 0}}
-a{{margin-right:10px}}
-#busy{{position:fixed;inset:0;z-index:99999;background:rgba(255,255,255,.86);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}}
-#busy[hidden]{{display:none}}
-.busy-card{{width:min(480px,calc(100vw - 40px));padding:26px;border:1px solid #ddd;border-radius:14px;background:#fff;box-shadow:0 10px 35px rgba(0,0,0,.18);text-align:center}}
-.spinner{{width:34px;height:34px;margin:0 auto 16px;border:4px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite}}
-#busy-title{{font-size:18px;font-weight:650;margin-bottom:8px}}#busy-detail{{color:#5f6368;line-height:1.45}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
-@media(prefers-color-scheme:dark){{body{{background:#111;color:#eee}}.ws{{border-color:#444}}#busy{{background:rgba(17,17,17,.86)}}.busy-card{{background:#202124;border-color:#444}}#busy-detail{{color:#bdc1c6}}}}
-</style></head>
-<body>
-<form id="logout-form" method="post" action="/logout" style="float:right;margin:0"><button type="submit">Logout</button></form>
-<h1>OpenCode Workspaces</h1><p>Signed in as <b>{username}</b></p>{notice}
-<form id="new"><input id="project" required pattern="[A-Za-z0-9_.-]+" placeholder="project-slug"><button type="submit">Start workspace</button></form>
-<div id="list">Loading…</div>
-<div id="busy" hidden aria-live="polite" aria-busy="true"><div class="busy-card"><div class="spinner"></div><div id="busy-title">Working…</div><div id="busy-detail"></div></div></div>
-<script>
-const busy=document.getElementById('busy');
-const busyTitle=document.getElementById('busy-title');
-const busyDetail=document.getElementById('busy-detail');
-function showBusy(title, detail=''){{ busyTitle.textContent=title; busyDetail.textContent=detail; busy.hidden=false; document.querySelectorAll('button').forEach(b=>b.disabled=true); }}
-function hideBusy(){{ busy.hidden=true; document.querySelectorAll('button').forEach(b=>b.disabled=false); }}
-async function api(url, opts={{}}) {{ const r=await fetch(url, opts); if(!r.ok) {{ let msg=r.statusText; try{{const j=await r.json(); msg=typeof j.detail==='string'?j.detail:JSON.stringify(j.detail)}}catch(_){{}} throw new Error(msg); }} return r.json(); }}
-async function startProject(slug){{
-  showBusy('Starting workspace…', `Creating the container for ${{slug}} and waiting for OpenCode to become ready. This can take a few seconds.`);
-  try{{ const x=await api('/workspaces/start',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{project_slug:slug}})}}); location.href=x.url; }}
-  catch(err){{ hideBusy(); alert(err.message); }}
-}}
-async function stopProject(w){{
-  showBusy('Stopping workspace…', `Stopping ${{w.project_slug}}, freeing its slot, and preserving its workspace data.`);
-  try{{ await api('/workspaces/'+w.id+'/stop',{{method:'POST'}}); await refresh(); hideBusy(); }}
-  catch(err){{ hideBusy(); alert(err.message); }}
-}}
-async function refresh() {{ const rows=await api('/workspaces'); const el=document.getElementById('list'); el.innerHTML='';
- rows.forEach(w => {{ const d=document.createElement('div'); d.className='ws'; d.innerHTML=`<b>${{w.project_slug}}</b> — ${{w.status}} — slot ${{w.slot_id ?? '-'}} `;
- if(w.status==='running' && w.url) {{ const a=document.createElement('a'); a.href=w.url; a.textContent='Open'; d.appendChild(a); const b=document.createElement('button'); b.textContent='Stop'; b.onclick=()=>stopProject(w); d.appendChild(b); }}
- else if(w.status==='running' && !w.url) {{ const u=document.createElement('button'); u.textContent='Upgrade workspace'; u.onclick=()=>startProject(w.project_slug); d.appendChild(u); }}
- else if(w.status==='stopped' || w.status==='error') {{ const s=document.createElement('button'); s.textContent='Start'; s.onclick=()=>startProject(w.project_slug); d.appendChild(s); }}
- el.appendChild(d); }}); }}
-document.getElementById('new').onsubmit=(e)=>{{e.preventDefault(); startProject(document.getElementById('project').value);}};
-document.getElementById('logout-form').onsubmit=async(e)=>{{
-  e.preventDefault();
-  showBusy('Logging out…','Stopping your running workspace(s), freeing their slots, and ending your session.');
-  try{{ await fetch('/logout',{{method:'POST',credentials:'same-origin'}}); location.href='/login'; }}
-  catch(err){{ hideBusy(); alert('Logout failed: '+err.message); }}
-}};
-refresh().catch(e=>document.getElementById('list').textContent=e.message);
-</script></body></html>"""
+        dashboard_page_html(
+            user.username,
+            notice,
+            total_slots,
+            free_slots,
+            settings.workspace_idle_timeout_minutes,
+        )
     )
     if reason == "idle":
         response.delete_cookie(settings.workspace_cookie_name, path="/")
@@ -492,6 +443,24 @@ def portal_widget_js():
 @app.get("/_portal/dashboard")
 def portal_dashboard(user: User = Depends(current_user)):
     return RedirectResponse("/dashboard", status_code=303)
+
+
+@app.get("/_portal/overview")
+def portal_overview(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    slots = db.scalars(select(Slot).order_by(Slot.id)).all()
+    running = db.scalars(
+        select(Workspace).where(
+            Workspace.user_id == user.id,
+            Workspace.status == WorkspaceStatus.RUNNING,
+        )
+    ).all()
+    return {
+        "platform_status": "online",
+        "total_slots": len(slots),
+        "free_slots": sum(1 for slot in slots if not slot.in_use),
+        "running_workspaces": len(running),
+        "idle_timeout_minutes": settings.workspace_idle_timeout_minutes,
+    }
 
 
 @app.get("/_portal/status")

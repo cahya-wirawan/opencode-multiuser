@@ -3,16 +3,16 @@ from html import escape
 PORTAL_CSS = r'''
 #oc-mu-portal{position:fixed;top:12px;right:14px;z-index:2147483647;font:13px/1.35 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124}
 #oc-mu-portal *{box-sizing:border-box}
-#oc-mu-portal>summary{list-style:none;display:flex;align-items:center;gap:7px;border:1px solid rgba(0,0,0,.16);border-radius:9px;background:rgba(255,255,255,.96);color:#202124;padding:7px 10px;box-shadow:0 2px 12px rgba(0,0,0,.16);cursor:pointer;user-select:none}
+#oc-mu-portal>summary{list-style:none;display:flex;align-items:center;gap:7px;border:1px solid rgba(0,0,0,.16);border-radius:10px;background:rgba(255,255,255,.97);color:#334155;padding:8px 11px;box-shadow:0 8px 24px rgba(15,23,42,.12);backdrop-filter:blur(12px);cursor:pointer;user-select:none}
 #oc-mu-portal>summary::-webkit-details-marker{display:none}
-#oc-mu-portal .ocmu-dot{width:7px;height:7px;border-radius:50%;background:#1a9c50;display:inline-block}
-#oc-mu-portal .ocmu-menu{position:absolute;right:0;top:calc(100% + 7px);width:225px;border:1px solid rgba(0,0,0,.16);border-radius:10px;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.20);overflow:hidden}
-#oc-mu-portal .ocmu-head{padding:10px 12px;border-bottom:1px solid #e5e7eb;background:#f8f9fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+#oc-mu-portal .ocmu-dot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.12);display:inline-block}
+#oc-mu-portal .ocmu-menu{position:absolute;right:0;top:calc(100% + 7px);width:225px;border:1px solid rgba(0,0,0,.16);border-radius:12px;background:#fff;box-shadow:0 18px 45px rgba(15,23,42,.18);overflow:hidden}
+#oc-mu-portal .ocmu-head{padding:10px 12px;border-bottom:1px solid #e5e7eb;background:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 #oc-mu-portal form{margin:0;padding:0}
 #oc-mu-portal a,#oc-mu-portal button.ocmu-item{display:block;width:100%;border:0;border-radius:0;background:#fff;color:#202124;text-align:left;text-decoration:none;padding:10px 12px;font:inherit;cursor:pointer}
-#oc-mu-portal a:hover,#oc-mu-portal button.ocmu-item:hover{background:#f1f3f4}
+#oc-mu-portal a:hover,#oc-mu-portal button.ocmu-item:hover{background:#f1f5f9}
 #oc-mu-portal .ocmu-danger{color:#b3261e!important;border-top:1px solid #e5e7eb!important}
-#oc-mu-portal .ocmu-status{padding:7px 12px;color:#5f6368;font-size:11px;border-top:1px solid #e5e7eb;background:#fafafa}
+#oc-mu-portal .ocmu-status{padding:7px 12px;color:#64748b;font-size:11px;border-top:1px solid #e5e7eb;background:#f8fafc}
 #oc-mu-portal.ocmu-busy>summary{cursor:wait}#oc-mu-portal.ocmu-busy .ocmu-dot{background:#d97706;animation:ocmu-pulse 1s ease-in-out infinite}#oc-mu-portal.ocmu-busy a,#oc-mu-portal.ocmu-busy button{pointer-events:none;opacity:.55}
 @keyframes ocmu-pulse{50%{opacity:.25}}
 @media (prefers-color-scheme:dark){#oc-mu-portal{color:#e8eaed}#oc-mu-portal>summary,#oc-mu-portal .ocmu-menu,#oc-mu-portal a,#oc-mu-portal button.ocmu-item{background:#202124;color:#e8eaed;border-color:#4b4d50}#oc-mu-portal .ocmu-head,#oc-mu-portal .ocmu-status{background:#292a2d;border-color:#4b4d50;color:#bdc1c6}#oc-mu-portal a:hover,#oc-mu-portal button.ocmu-item:hover{background:#303134}#oc-mu-portal .ocmu-danger{border-color:#4b4d50!important;color:#f28b82!important}}

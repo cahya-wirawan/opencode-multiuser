@@ -115,3 +115,26 @@ def test_workspace_model_uses_partial_active_index():
     assert [col.name for col in idx.columns] == ["user_id", "project_slug"]
     assert "STOPPED" not in str(idx.dialect_options["postgresql"]["where"])
     assert "RUNNING" in str(idx.dialect_options["postgresql"]["where"])
+
+
+def test_modern_login_ui_is_local_and_accessible():
+    from app.ui import login_page_html
+    html = login_page_html()
+    assert 'OpenCode Workspace Portal' in html
+    assert '/_ui/app.css' in html
+    assert 'cdn.tailwindcss.com' not in html
+    assert 'aria-label="Show password"' in html
+    assert 'Signing in…' in html
+
+
+def test_modern_dashboard_has_operational_feedback():
+    from app.ui import dashboard_page_html
+    html = dashboard_page_html('alice', '', 10, 8, 30)
+    assert 'Your workspaces' in html
+    assert 'Available slots' in html
+    assert 'Starting container…' in html
+    assert 'Waiting for OpenCode service…' in html
+    assert 'Stopping workspace…' in html
+    assert 'Logging out…' in html
+    assert 'toast-region' in html
+    assert 'stop-dialog' in html
