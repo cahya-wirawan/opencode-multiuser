@@ -138,3 +138,80 @@ def test_modern_dashboard_has_operational_feedback():
     assert 'Logging out…' in html
     assert 'toast-region' in html
     assert 'stop-dialog' in html
+
+
+def test_login_ui_supports_oidc_and_local_fallback():
+    from app.ui import login_page_html
+    html = login_page_html(
+        oidc_enabled=True,
+        oidc_display_name="Example SSO",
+        local_auth_enabled=True,
+        registration_enabled=True,
+    )
+    assert '/auth/oidc/login' in html
+    assert 'Continue with Example SSO' in html
+    assert 'or use a local account' in html
+    assert 'href="/register"' in html
+    assert 'id="login"' in html
+
+
+def test_login_ui_can_be_oidc_only():
+    from app.ui import login_page_html
+    html = login_page_html(
+        oidc_enabled=True,
+        oidc_display_name="Enterprise Identity",
+        local_auth_enabled=False,
+        registration_enabled=False,
+    )
+    assert 'Continue with Enterprise Identity' in html
+    assert 'id="login"' not in html
+    assert 'href="/register"' not in html
+
+
+def test_registration_ui_describes_first_user_admin():
+    from app.ui import registration_page_html
+    html = registration_page_html(first_user=True)
+    assert 'Bootstrap administrator' in html
+    assert 'Admin role' in html
+    assert '/auth/register' in html
+    assert 'Creating account…' in html
+
+
+def test_first_user_gets_admin_role():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.db import Base
+    from app.models import User
+    from app.security import role_for_new_user
+
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        assert role_for_new_user(db) == 'admin'
+        db.add(User(username='first', password_hash='x', role='admin', auth_provider='local'))
+        db.commit()
+        assert role_for_new_user(db) == 'developer'
+
+
+def test_oidc_provisioning_is_stable_and_uses_subject(monkeypatch):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.db import Base
+    from app import oidc
+
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    monkeypatch.setattr(oidc.settings, 'oidc_issuer', 'https://issuer.example')
+    monkeypatch.setattr(oidc.settings, 'oidc_auto_provision', True)
+    monkeypatch.setattr(oidc.settings, 'oidc_default_role', 'developer')
+    with Session() as db:
+        claims = {'sub': 'abc-123', 'preferred_username': 'alice', 'email': 'alice@example.com', 'name': 'Alice Example'}
+        user1 = oidc.provision_oidc_user(db, claims)
+        user2 = oidc.provision_oidc_user(db, claims)
+        assert user1.id == user2.id
+        assert user1.role == 'admin'
+        assert user1.auth_provider == 'oidc'
+        assert user1.password_hash is None
+        assert user1.email == 'alice@example.com'

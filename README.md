@@ -1,5 +1,28 @@
-# OpenCode Multiuser v6.5 — single-host gateway
+# OpenCode Multiuser v6.6 — OIDC + local authentication
 
+
+## v6.6 authentication and registration
+
+v6.6 adds generic **OpenID Connect (OIDC)** authentication while preserving local username/password authentication as an optional fallback. Both authentication methods produce the same short-lived portal session, so workspace ownership and gateway routing do not change.
+
+Highlights:
+
+- generic OIDC discovery using `OIDC_ISSUER` (or an explicit `OIDC_DISCOVERY_URL`)
+- Authorization Code flow with signed state/nonce session handling
+- PKCE `S256` enabled by default
+- OIDC identities are keyed by `(issuer, sub)`; email and username are treated as profile data, not identity keys
+- access/refresh tokens from the identity provider are not persisted by the portal
+- optional automatic provisioning of first-time OIDC users
+- local `/register` page with 12-character minimum passwords
+- first provisioned account receives the `admin` role; later accounts default to `developer`
+- upgrades assign the oldest existing local account `admin` and existing remaining accounts `developer`
+- local login/registration can be disabled after OIDC is verified
+
+The current `admin`/`developer` role is persisted and shown in the portal. It establishes the RBAC model for future administrative functions; workspace ownership remains per-user in v6.6.
+
+**Bootstrap security:** the first account is intentionally privileged. Keep a fresh portal on a trusted/internal network during bootstrap. After creating the intended local accounts, set `ALLOW_REGISTRATION=false`; for SSO-only deployments also set `LOCAL_AUTH_ENABLED=false` only after OIDC has been verified.
+
+> **OIDC and HTTPS:** many enterprise identity providers require HTTPS redirect URIs for web applications. The portal can still run over HTTP for local testing, but enable TLS before integrating with providers that require secure callbacks.
 
 ## v6.5 portal UI/UX redesign
 
@@ -133,8 +156,8 @@ Log in again as the rootless service user afterward.
 ## Install
 
 ```bash
-unzip opencode-multiuser-fixed-v6.5.zip
-cd opencode-multiuser-fixed-v6.5
+unzip opencode-multiuser-fixed-v6.6.zip
+cd opencode-multiuser-fixed-v6.6
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
@@ -180,6 +203,23 @@ STOP_WORKSPACES_ON_LOGOUT=true
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
+
+# Local auth / registration
+LOCAL_AUTH_ENABLED=true
+ALLOW_REGISTRATION=true
+
+# Generic OIDC (disabled until configured)
+OIDC_ENABLED=false
+OIDC_ISSUER=
+OIDC_DISCOVERY_URL=
+OIDC_CLIENT_ID=
+OIDC_CLIENT_SECRET=
+OIDC_SCOPES=openid profile email
+OIDC_DISPLAY_NAME=Corporate SSO
+OIDC_REDIRECT_URI=
+OIDC_USE_PKCE=true
+OIDC_AUTO_PROVISION=true
+OIDC_DEFAULT_ROLE=developer
 ```
 
 `MAX_SLOTS=10` means at most ten simultaneous workspace containers. It does **not** prestart ten containers.
@@ -192,16 +232,58 @@ Open:
 http://code-test.example.org:8443/login
 ```
 
-For a fresh installation, create the first account through the API:
+For a fresh local-auth installation, open:
 
-```bash
-CP=http://127.0.0.1:8010
-curl -sS -X POST "$CP/auth/register" \
-  -H 'content-type: application/json' \
-  -d '{"username":"cahya","password":"replace-with-a-long-password"}' | jq
+```text
+http://code-test.example.org:8443/register
 ```
 
-Then sign in through `/login`. `/dashboard` lets you start, open, and stop workspaces. Clicking **Open** sets the selected workspace cookie and sends the browser through the gateway to OpenCode.
+The first account receives the **Admin** role automatically. Later registrations receive **Developer**. Then sign in through `/login`. `/dashboard` lets you start, open, and stop workspaces.
+
+## Configure generic OIDC
+
+Register the portal as a web/OpenID Connect client in your identity provider. Use this callback URI (adjust host/port/TLS):
+
+```text
+http://code-test.example.org:8443/auth/oidc/callback
+```
+
+Then edit `~/.config/opencode-multiuser/control-plane.env`:
+
+```bash
+OIDC_ENABLED=true
+OIDC_ISSUER=https://id.example.org/realms/developers
+OIDC_CLIENT_ID=opencode-portal
+OIDC_CLIENT_SECRET=replace-me
+OIDC_SCOPES=openid profile email
+OIDC_DISPLAY_NAME=Company SSO
+OIDC_USE_PKCE=true
+OIDC_AUTO_PROVISION=true
+OIDC_DEFAULT_ROLE=developer
+```
+
+`OIDC_DISCOVERY_URL` normally stays empty; the portal derives `/.well-known/openid-configuration` from the issuer. Set it only for providers with a nonstandard discovery URL. `OIDC_REDIRECT_URI` also normally stays empty and is derived from `CONTROL_PLANE_URL`.
+
+Restart the control plane after changing authentication configuration:
+
+```bash
+systemctl --user restart opencode-control-plane.service
+```
+
+The login page will display an SSO button. To make the portal SSO-only after testing:
+
+```bash
+LOCAL_AUTH_ENABLED=false
+ALLOW_REGISTRATION=false
+```
+
+Do not disable local authentication until OIDC login has been verified from a separate browser session.
+
+### OIDC account provisioning
+
+On first OIDC login the portal uses the provider's `sub` claim together with `OIDC_ISSUER` as the immutable identity. `preferred_username`, `email`, and `name` are copied as profile attributes when available. If `OIDC_AUTO_PROVISION=false`, unknown OIDC identities are rejected.
+
+The first account ever provisioned in an empty database becomes `admin`, whether it was created from `/register` or through OIDC. All later accounts use `OIDC_DEFAULT_ROLE` (default `developer`).
 
 ## API test
 
@@ -257,7 +339,7 @@ The OpenCode cache remains ephemeral in tmpfs.
 
 ## Upgrade from v5
 
-v6 preserves PostgreSQL and the existing user/project storage. The installer removes old `workspace-*.yml` Traefik route files.
+v6 preserves PostgreSQL and the existing user/project storage. v6.6 also migrates existing users with role/provider fields and makes `password_hash` nullable so OIDC-only accounts do not require a local password. The installer removes old `workspace-*.yml` Traefik route files.
 
 Existing v5 workspace containers lack the v6 loopback port mapping and `runtime-secret`. They appear in the dashboard with an **Upgrade workspace** action instead of **Open**. That action calls `/workspaces/start`, which automatically recycles the old container and recreates it in v6 gateway mode.
 

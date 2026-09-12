@@ -18,11 +18,33 @@ class WorkspaceStatus(str, enum.Enum):
     ERROR = "error"
 
 
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    DEVELOPER = "developer"
+
+
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index(
+            "uq_oidc_identity",
+            "oidc_issuer",
+            "oidc_subject",
+            unique=True,
+            postgresql_where=text("oidc_subject IS NOT NULL"),
+            sqlite_where=text("oidc_subject IS NOT NULL"),
+        ),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default=UserRole.DEVELOPER.value, index=True)
+    auth_provider: Mapped[str] = mapped_column(String(20), default="local", index=True)
+    oidc_issuer: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    oidc_subject: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
@@ -36,8 +58,6 @@ class Slot(Base):
 
 class Workspace(Base):
     __tablename__ = "workspaces"
-    # Only active lifecycle states must be unique. Historical STOPPED/ERROR rows
-    # are intentionally allowed so runtime reconciliation can preserve history.
     __table_args__ = (
         Index(
             "uq_active_workspace",

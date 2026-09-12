@@ -14,7 +14,7 @@ SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
 # v6.4+ requires the portal injection module. Refuse to perform a partial
 # upgrade if the extracted source tree is incomplete.
-for required_file in app/portal.py app/ui.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py; do
   if [[ ! -f "$SELF_DIR/$required_file" ]]; then
     echo "ERROR: $SELF_DIR/$required_file is missing." >&2
     echo "Extract the complete release archive and run install.sh from that tree." >&2
@@ -134,7 +134,7 @@ fi
 
 rsync -a --delete --exclude .venv --exclude .pytest_cache "$SELF_DIR/" "$TARGET/"
 
-for required_file in app/portal.py app/ui.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py; do
   if [[ ! -f "$TARGET/$required_file" ]]; then
     echo "ERROR: upgrade copy is incomplete: $TARGET/$required_file was not installed." >&2
     exit 1
@@ -162,7 +162,24 @@ CONTROL_PLANE_URL=http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT
 TRAEFIK_ENTRYPOINT=$TRAEFIK_ENTRYPOINT
 DATABASE_URL=postgresql+psycopg://opencode:${POSTGRES_PASSWORD}@127.0.0.1:5432/opencode
 JWT_SECRET=$JWT_SECRET
+LOCAL_AUTH_ENABLED=true
 ALLOW_REGISTRATION=true
+OIDC_ENABLED=false
+OIDC_ISSUER=
+OIDC_DISCOVERY_URL=
+OIDC_CLIENT_ID=
+OIDC_CLIENT_SECRET=
+OIDC_SCOPES=openid profile email
+OIDC_DISPLAY_NAME=Corporate SSO
+OIDC_REDIRECT_URI=
+OIDC_USE_PKCE=true
+OIDC_AUTO_PROVISION=true
+OIDC_DEFAULT_ROLE=developer
+OIDC_USERNAME_CLAIM=preferred_username
+OIDC_EMAIL_CLAIM=email
+OIDC_NAME_CLAIM=name
+OIDC_STATE_COOKIE_NAME=oc_oidc_state
+OIDC_STATE_TTL_SECONDS=600
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
@@ -193,6 +210,24 @@ else
   grep -q '^SESSION_COOKIE_NAME=' "$CFG/control-plane.env" || echo "SESSION_COOKIE_NAME=oc_session" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_COOKIE_NAME=' "$CFG/control-plane.env" || echo "WORKSPACE_COOKIE_NAME=oc_workspace" >> "$CFG/control-plane.env"
   grep -q '^COOKIE_SECURE=' "$CFG/control-plane.env" || echo "COOKIE_SECURE=false" >> "$CFG/control-plane.env"
+  grep -q '^LOCAL_AUTH_ENABLED=' "$CFG/control-plane.env" || echo "LOCAL_AUTH_ENABLED=true" >> "$CFG/control-plane.env"
+  grep -q '^ALLOW_REGISTRATION=' "$CFG/control-plane.env" || echo "ALLOW_REGISTRATION=true" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_ENABLED=' "$CFG/control-plane.env" || echo "OIDC_ENABLED=false" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_ISSUER=' "$CFG/control-plane.env" || echo "OIDC_ISSUER=" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_DISCOVERY_URL=' "$CFG/control-plane.env" || echo "OIDC_DISCOVERY_URL=" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_CLIENT_ID=' "$CFG/control-plane.env" || echo "OIDC_CLIENT_ID=" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_CLIENT_SECRET=' "$CFG/control-plane.env" || echo "OIDC_CLIENT_SECRET=" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_SCOPES=' "$CFG/control-plane.env" || echo "OIDC_SCOPES=openid profile email" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_DISPLAY_NAME=' "$CFG/control-plane.env" || echo "OIDC_DISPLAY_NAME=Corporate SSO" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_REDIRECT_URI=' "$CFG/control-plane.env" || echo "OIDC_REDIRECT_URI=" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_USE_PKCE=' "$CFG/control-plane.env" || echo "OIDC_USE_PKCE=true" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_AUTO_PROVISION=' "$CFG/control-plane.env" || echo "OIDC_AUTO_PROVISION=true" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_DEFAULT_ROLE=' "$CFG/control-plane.env" || echo "OIDC_DEFAULT_ROLE=developer" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_USERNAME_CLAIM=' "$CFG/control-plane.env" || echo "OIDC_USERNAME_CLAIM=preferred_username" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_EMAIL_CLAIM=' "$CFG/control-plane.env" || echo "OIDC_EMAIL_CLAIM=email" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_NAME_CLAIM=' "$CFG/control-plane.env" || echo "OIDC_NAME_CLAIM=name" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_STATE_COOKIE_NAME=' "$CFG/control-plane.env" || echo "OIDC_STATE_COOKIE_NAME=oc_oidc_state" >> "$CFG/control-plane.env"
+  grep -q '^OIDC_STATE_TTL_SECONDS=' "$CFG/control-plane.env" || echo "OIDC_STATE_TTL_SECONDS=600" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_HOST_PORT_BASE=' "$CFG/control-plane.env" || echo "WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_READY_TIMEOUT_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_TIMEOUT_SECONDS=45" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_READY_POLL_INTERVAL_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5" >> "$CFG/control-plane.env"
@@ -247,7 +282,7 @@ systemctl --user enable opencode-control-plane.service
 systemctl --user restart opencode-control-plane.service
 
 cat <<MSG
-Installed OpenCode Multiuser v6.5 (single-host gateway + redesigned portal UI).
+Installed OpenCode Multiuser v6.6 (generic OIDC + local auth + role-aware registration).
 
 Public gateway:
   http://$BASE_DOMAIN:$TRAEFIK_PUBLIC_PORT
@@ -261,6 +296,11 @@ Dashboard:
 
 Persistent config:
   $CFG/control-plane.env
+
+Authentication:
+  Local username/password is enabled by default.
+  Configure OIDC_* values and set OIDC_ENABLED=true for generic OIDC SSO.
+  The first provisioned user receives the admin role; later users default to developer.
 
 Capacity:
   MAX_SLOTS controls simultaneous workspace containers.

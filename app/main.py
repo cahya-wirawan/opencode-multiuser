@@ -6,6 +6,7 @@ from html import escape
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocket, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -13,10 +14,10 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .db import Base, SessionLocal, engine, get_db
 from .gateway import proxy_http, proxy_websocket, selected_workspace_for_request
-from .models import Slot, User, Workspace, WorkspaceStatus
-from .migrations import drop_legacy_workspace_constraint, ensure_active_workspace_index
+from .models import Slot, User, UserRole, Workspace, WorkspaceStatus
+from .migrations import drop_legacy_workspace_constraint, ensure_active_workspace_index, migrate_user_auth_schema
 from .portal import PORTAL_CSS, PORTAL_JS
-from .ui import APP_CSS, dashboard_page_html, login_page_html
+from .ui import APP_CSS, dashboard_page_html, login_page_html, registration_page_html
 from .runtime import (
     container_running,
     container_has_workspace_port,
@@ -29,8 +30,9 @@ from .runtime import (
     write_workspace_stop_reason,
 )
 from .schemas import LoginRequest, RegisterRequest, TokenResponse, WorkspaceResponse, WorkspaceStartRequest
-from .security import current_user, hash_password, issue_token, load_user_from_token, verify_password
+from .security import current_user, hash_password, issue_token, load_user_from_token, role_for_new_user, verify_password
 from .traefik import cleanup_legacy_workspace_routes, workspace_open_url
+from .oidc import oidc_client, provision_oidc_user
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -215,7 +217,9 @@ async def lifespan(app: FastAPI):
     # v6.4.3 fixes the old (user_id, project_slug, status) uniqueness rule.
     # Drop it before create/reconciliation. ALTER TABLE IF EXISTS makes this
     # safe for a completely fresh PostgreSQL installation as well.
+    settings.validate_auth()
     drop_legacy_workspace_constraint()
+    migrate_user_auth_schema()
     Base.metadata.create_all(engine)
     _seed_slots()
     settings.expanded_data_root.mkdir(parents=True, exist_ok=True)
@@ -239,11 +243,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OpenCode Multiuser Gateway",
-    version="0.6.5",
+    version="0.6.6",
     lifespan=lifespan,
     docs_url="/_control/docs",
     openapi_url="/_control/openapi.json",
     redoc_url=None,
+)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.jwt_secret,
+    session_cookie=settings.oidc_state_cookie_name,
+    max_age=settings.oidc_state_ttl_seconds,
+    same_site="lax",
+    https_only=settings.cookie_secure,
 )
 
 
@@ -254,9 +266,17 @@ def healthz():
 
 @app.post("/auth/register", response_model=TokenResponse)
 def register(req: RegisterRequest, response: Response, db: Session = Depends(get_db)):
+    if not settings.local_auth_enabled:
+        raise HTTPException(status_code=403, detail="Local authentication is disabled")
     if not settings.allow_registration:
         raise HTTPException(status_code=403, detail="Registration disabled")
-    user = User(username=req.username, password_hash=hash_password(req.password))
+    role = role_for_new_user(db)
+    user = User(
+        username=req.username,
+        password_hash=hash_password(req.password),
+        role=role,
+        auth_provider="local",
+    )
     db.add(user)
     try:
         db.commit()
@@ -266,22 +286,57 @@ def register(req: RegisterRequest, response: Response, db: Session = Depends(get
     db.refresh(user)
     token = issue_token(user)
     _set_session_cookie(response, token)
-    return TokenResponse(access_token=token)
+    return TokenResponse(access_token=token, role=user.role)
 
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.username == req.username, User.is_active.is_(True)))
+    if not settings.local_auth_enabled:
+        raise HTTPException(status_code=403, detail="Local authentication is disabled")
+    user = db.scalar(
+        select(User).where(
+            User.username == req.username,
+            User.auth_provider == "local",
+            User.is_active.is_(True),
+        )
+    )
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = issue_token(user)
     _set_session_cookie(response, token)
-    return TokenResponse(access_token=token)
+    return TokenResponse(access_token=token, role=user.role)
 
 
-@app.api_route("/logout", methods=["GET", "POST"])
+@app.get("/auth/oidc/login")
+async def oidc_login(request: Request):
+    client = oidc_client()
+    return await client.authorize_redirect(request, settings.effective_oidc_redirect_uri)
+
+
+@app.get("/auth/oidc/callback")
+async def oidc_callback(request: Request, db: Session = Depends(get_db)):
+    try:
+        token = await oidc_client().authorize_access_token(request)
+        userinfo = token.get("userinfo")
+        if not userinfo:
+            raise RuntimeError("OIDC token response did not contain userinfo")
+        user = provision_oidc_user(db, userinfo)
+    except HTTPException as exc:
+        logger.warning("OIDC authentication rejected: %s", exc.detail)
+        return RedirectResponse("/login?error=oidc", status_code=303)
+    except Exception:
+        logger.exception("OIDC authentication failed")
+        return RedirectResponse("/login?error=oidc", status_code=303)
+
+    response = RedirectResponse("/dashboard", status_code=303)
+    _set_session_cookie(response, issue_token(user))
+    return response
+
+
+@app.post("/logout")
 def logout(request: Request, db: Session = Depends(get_db)):
     user = load_user_from_token(_request_token(request), db)
+    request.session.clear()
     if user and settings.stop_workspaces_on_logout:
         _stop_user_workspaces(user.id, db)
     response = RedirectResponse("/login", status_code=303)
@@ -296,8 +351,31 @@ def app_ui_css():
 
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page():
-    return HTMLResponse(login_page_html())
+def login_page(request: Request, db: Session = Depends(get_db)):
+    existing = load_user_from_token(_request_token(request), db)
+    if existing:
+        return RedirectResponse("/dashboard", status_code=303)
+    error = request.query_params.get("error", "")
+    return HTMLResponse(
+        login_page_html(
+            oidc_enabled=settings.oidc_configured,
+            oidc_display_name=settings.oidc_display_name,
+            local_auth_enabled=settings.local_auth_enabled,
+            registration_enabled=settings.local_auth_enabled and settings.allow_registration,
+            error=error,
+        )
+    )
+
+
+@app.get("/register", response_class=HTMLResponse)
+def registration_page(request: Request, db: Session = Depends(get_db)):
+    if not settings.local_auth_enabled or not settings.allow_registration:
+        return RedirectResponse("/login?error=registration_disabled", status_code=303)
+    existing = load_user_from_token(_request_token(request), db)
+    if existing:
+        return RedirectResponse("/dashboard", status_code=303)
+    first_user = (db.scalar(select(User.id).limit(1)) is None)
+    return HTMLResponse(registration_page_html(first_user=first_user))
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -334,6 +412,8 @@ def dashboard(
             total_slots,
             free_slots,
             settings.workspace_idle_timeout_minutes,
+            role=user.role,
+            display_name=user.display_name,
         )
     )
     if reason == "idle":
@@ -496,6 +576,7 @@ def portal_stop(request: Request, user: User = Depends(current_user), db: Sessio
 @app.post("/_portal/logout")
 def portal_logout(request: Request, db: Session = Depends(get_db)):
     user = load_user_from_token(_request_token(request), db)
+    request.session.clear()
     if user and settings.stop_workspaces_on_logout:
         _stop_user_workspaces(user.id, db)
     response = RedirectResponse("/login", status_code=303)

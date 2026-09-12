@@ -7,7 +7,7 @@ packages = ["app"]
 
 [project]
 name = "opencode-multiuser"
-version = "0.6.5"
+version = "0.6.6"
 description = "Single-host multi-user OpenCode gateway for rootless Podman, systemd and Traefik"
 requires-python = ">=3.11"
 dependencies = [
@@ -20,6 +20,8 @@ dependencies = [
   "argon2-cffi>=25.1,<26",
   "httpx>=0.28,<1",
   "websockets>=15,<17",
+  "Authlib>=1.8,<2",
+  "itsdangerous>=2.2,<3",
 ]
 
 [project.optional-dependencies]

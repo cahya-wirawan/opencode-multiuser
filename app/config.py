@@ -6,8 +6,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     base_domain: str = "code.example.com"
-    # Public URL reached through Traefik. This is also the single URL used for
-    # opening workspaces; no per-workspace hostnames are required.
     control_plane_url: str = "http://code.example.com:8443"
     control_plane_bind: str = "0.0.0.0"
     control_plane_port: int = 8010
@@ -16,13 +14,30 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./opencode-multiuser.db"
     jwt_secret: str = "development-only-change-me"
     jwt_ttl_minutes: int = 480
-    allow_registration: bool = True
     session_cookie_name: str = "oc_session"
     workspace_cookie_name: str = "oc_workspace"
-    # Explicit cookie policy. Keep this independent of CONTROL_PLANE_URL so an
-    # upgrade from an older HTTPS URL cannot accidentally mark cookies Secure
-    # while Traefik is serving plain HTTP.
     cookie_secure: bool = False
+
+    # Authentication. Local auth remains available by default so a fresh
+    # installation works before an OIDC provider is configured.
+    local_auth_enabled: bool = True
+    allow_registration: bool = True
+    oidc_enabled: bool = False
+    oidc_issuer: str = ""
+    oidc_discovery_url: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_scopes: str = "openid profile email"
+    oidc_display_name: str = "Corporate SSO"
+    oidc_redirect_uri: str = ""
+    oidc_use_pkce: bool = True
+    oidc_auto_provision: bool = True
+    oidc_default_role: str = "developer"
+    oidc_username_claim: str = "preferred_username"
+    oidc_email_claim: str = "email"
+    oidc_name_claim: str = "name"
+    oidc_state_cookie_name: str = "oc_oidc_state"
+    oidc_state_ttl_seconds: int = 600
 
     podman_bin: str = "/usr/bin/podman"
     workspace_image: str = "localhost/opencode-workspace:latest"
@@ -32,15 +47,11 @@ class Settings(BaseSettings):
     workspace_memory: str = "8g"
     workspace_cpus: float = 4.0
     workspace_pids_limit: int = 1024
-    # Wait for OpenCode /global/health before reporting a new workspace as ready.
     workspace_ready_timeout_seconds: int = 45
     workspace_ready_poll_interval_seconds: float = 0.5
-    # Reclaim unused capacity automatically. Set idle timeout to 0 to disable.
     workspace_idle_timeout_minutes: int = 30
     workspace_reaper_interval_seconds: int = 60
     stop_workspaces_on_logout: bool = True
-    # Slot N publishes container :4096 only on host loopback at base + N.
-    # Example: base 41000, slot 6 -> 127.0.0.1:41006.
     workspace_host_port_base: int = 41000
 
     traefik_dynamic_dir: str = "~/.local/share/opencode-multiuser/traefik-dynamic"
@@ -56,6 +67,31 @@ class Settings(BaseSettings):
     def expanded_traefik_dynamic_dir(self) -> Path:
         return Path(self.traefik_dynamic_dir.replace("%h", str(Path.home()))).expanduser().resolve()
 
+    @property
+    def oidc_configured(self) -> bool:
+        return bool(self.oidc_enabled and self.oidc_issuer.strip() and self.oidc_client_id.strip())
+
+    @property
+    def effective_oidc_discovery_url(self) -> str:
+        if self.oidc_discovery_url.strip():
+            return self.oidc_discovery_url.strip()
+        return self.oidc_issuer.rstrip("/") + "/.well-known/openid-configuration"
+
+    @property
+    def effective_oidc_redirect_uri(self) -> str:
+        if self.oidc_redirect_uri.strip():
+            return self.oidc_redirect_uri.strip()
+        return self.control_plane_url.rstrip("/") + "/auth/oidc/callback"
+
+    def validate_auth(self) -> None:
+        if not self.local_auth_enabled and not self.oidc_configured:
+            raise RuntimeError(
+                "No authentication method is enabled. Enable LOCAL_AUTH_ENABLED or configure OIDC."
+            )
+        if self.oidc_enabled and not self.oidc_configured:
+            raise RuntimeError(
+                "OIDC_ENABLED=true requires at least OIDC_ISSUER and OIDC_CLIENT_ID."
+            )
 
 
 settings = Settings()

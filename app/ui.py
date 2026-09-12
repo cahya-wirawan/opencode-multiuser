@@ -36,6 +36,7 @@ APP_CSS = r'''
 .busy-overlay{position:fixed;inset:0;z-index:100;background:rgba(248,250,252,.84);display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(7px)}.busy-overlay[hidden]{display:none}.busy-card{width:min(500px,100%);padding:1.5rem;text-align:center}.busy-ring{width:48px;height:48px;border-radius:50%;margin:0 auto 1rem;background:conic-gradient(#4f46e5 0 28%,#e2e8f0 28% 100%);position:relative;animation:spin .9s linear infinite}.busy-ring:after{content:"";position:absolute;inset:4px;background:#fff;border-radius:50%}.busy-card h3{font-size:1.05rem;margin:.1rem 0 .45rem}.busy-card p{margin:0;color:#64748b;font-size:.83rem;line-height:1.55}.progress-track{height:4px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:1rem}.progress-bar{height:100%;width:35%;background:linear-gradient(90deg,#4f46e5,#0ea5e9);border-radius:99px;animation:progress 1.45s ease-in-out infinite}@keyframes progress{0%{transform:translateX(-100%)}100%{transform:translateX(385%)}}
 .toast-region{position:fixed;right:1rem;bottom:1rem;z-index:120;display:flex;flex-direction:column;gap:.6rem;width:min(390px,calc(100vw - 2rem))}.toast{display:flex;gap:.7rem;align-items:flex-start;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:10px;padding:.85rem .95rem;box-shadow:0 15px 40px rgba(15,23,42,.3);animation:toast-in .18s ease-out}.toast.error{background:#7f1d1d;border-color:#991b1b}.toast.success{background:#064e3b;border-color:#047857}.toast-title{font-size:.82rem;font-weight:700}.toast-message{font-size:.75rem;color:#cbd5e1;margin-top:.1rem;line-height:1.45}@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .ui-dialog{border:0;border-radius:14px;padding:0;width:min(430px,calc(100vw - 2rem));box-shadow:0 24px 70px rgba(15,23,42,.28);background:#fff;color:#0f172a}.ui-dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(3px)}.dialog-body{padding:1.35rem}.dialog-head{display:flex;gap:.8rem;align-items:flex-start}.dialog-icon{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#fef2f2;color:#dc2626}.dialog-head h3{margin:0;font-size:1rem}.dialog-head p{margin:.35rem 0 0;color:#64748b;font-size:.8rem;line-height:1.5}.dialog-actions{display:flex;justify-content:flex-end;gap:.55rem;padding:1rem 1.35rem;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 14px 14px}
+.auth-stack{display:flex;flex-direction:column;gap:.8rem}.auth-divider{display:flex;align-items:center;gap:.8rem;margin:1.1rem 0;color:#94a3b8;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em}.auth-divider:before,.auth-divider:after{content:"";height:1px;background:#e2e8f0;flex:1}.auth-link-row{text-align:center;margin-top:1rem;color:#64748b;font-size:.8rem}.auth-link-row a{color:#4f46e5;font-weight:700;text-decoration:none}.auth-link-row a:hover{text-decoration:underline}.sso-button{min-height:44px;background:#0f172a;color:#fff}.sso-button:hover:not(:disabled){background:#1e293b}.role-badge{display:inline-flex;align-items:center;border-radius:999px;padding:.18rem .48rem;margin-left:.25rem;font-size:.62rem;line-height:1;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}.registration-note{margin:.85rem 0 1.15rem}.registration-note strong{display:block;margin-bottom:.18rem}.provider-note{font-size:.76rem;line-height:1.5;color:#64748b;margin-top:.85rem;text-align:center}
 @media(max-width:1024px){.login-shell{grid-template-columns:1fr}.login-visual{display:none}.login-panel{min-height:100vh}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.workspace-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.topbar-inner,.dashboard-main{padding-left:1rem;padding-right:1rem}.dashboard-heading{align-items:flex-start;flex-direction:column}.platform-state{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}.stat-card{padding:.85rem}.stat-value{font-size:1.35rem}.start-row{grid-template-columns:1fr}.workspace-grid{grid-template-columns:1fr}.user-chip{display:none}.workspace-card{min-height:190px}.login-panel{padding:1rem}.login-card{padding:1.4rem}.topbar-brand span{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
@@ -68,53 +69,72 @@ def _icon(name: str, cls: str = "icon") -> str:
     return icons.get(name, icons["code"]).replace("<svg ", f'<svg class="{cls}" ')
 
 
-def login_page_html() -> str:
-    return f'''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · OpenCode Workspace Portal</title><link rel="stylesheet" href="/_ui/app.css"></head>
-<body>
-<main class="login-shell">
-  <section class="login-visual" aria-hidden="true">
-    <div class="login-brand"><span class="brand-mark">{_icon("terminal")}</span><div>OpenCode Workspace Portal<small>Internal developer platform</small></div></div>
-    <div class="login-hero">
-      <span class="login-kicker"><span class="status-dot"></span> Secure multi-user workspace gateway</span>
-      <h1>Developer workspaces, isolated and ready on demand.</h1>
-      <p>Launch persistent OpenCode environments without managing containers, credentials, or runtime cleanup manually.</p>
-      <div class="feature-list">
-        <div class="feature-item">{_icon("shield")}<strong>Isolated runtimes</strong><span>Dedicated rootless containers and resource controls per workspace.</span></div>
-        <div class="feature-item">{_icon("database")}<strong>Persistent state</strong><span>Your projects and OpenCode sessions survive runtime recreation.</span></div>
-        <div class="feature-item">{_icon("refresh")}<strong>Automatic cleanup</strong><span>Idle runtimes are reclaimed while your workspace data remains available.</span></div>
-      </div>
-    </div>
-    <div class="login-foot">OpenCode Multiuser · Enterprise workspace gateway</div>
-  </section>
-  <section class="login-panel app-grid-bg">
-    <div class="ui-card ui-card-elevated login-card">
-      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.2rem"><span class="brand-mark">{_icon("terminal")}</span><div><strong style="display:block;font-size:.9rem">OpenCode</strong><span class="text-xs text-muted">Workspace Portal</span></div></div>
-      <h2>Welcome back</h2><p>Sign in with your developer platform credentials to access your workspaces.</p>
+def login_page_html(
+    oidc_enabled: bool = False,
+    oidc_display_name: str = "Corporate SSO",
+    local_auth_enabled: bool = True,
+    registration_enabled: bool = True,
+    error: str = "",
+) -> str:
+    error_messages = {
+        "oidc": "Single sign-on could not be completed. Please try again or contact your administrator.",
+        "registration_disabled": "Local account registration is not available on this portal.",
+    }
+    notice = ""
+    if error in error_messages:
+        notice = f'<div class="ui-alert ui-alert-error login-error" role="alert"><span>{_icon("alert")}</span><span>{escape(error_messages[error])}</span></div>'
+
+    oidc_block = ""
+    if oidc_enabled:
+        oidc_block = f'<a id="oidc-login" class="ui-button sso-button w-full" href="/auth/oidc/login">{_icon("shield","icon-sm")} Continue with {escape(oidc_display_name)}</a>'
+
+    local_block = ""
+    if local_auth_enabled:
+        register_link = '<div class="auth-link-row">Need an account? <a href="/register">Register</a></div>' if registration_enabled else ""
+        local_block = f'''
       <form id="login" novalidate>
         <div class="form-field"><label class="ui-label" for="username">Username</label><input class="ui-input" id="username" name="username" autocomplete="username" placeholder="Enter your username" required></div>
         <div class="form-field"><label class="ui-label" for="password">Password</label><div class="password-wrap"><input class="ui-input" id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required><button id="toggle-password" class="ui-icon-button password-toggle" type="button" aria-label="Show password">{_icon("eye")}</button></div></div>
         <div id="login-error" class="ui-alert ui-alert-error login-error hidden" role="alert"><span>{_icon("alert")}</span><span id="login-error-text">Unable to sign in.</span></div>
         <button id="login-button" class="ui-button ui-button-primary w-full" style="margin-top:1rem" type="submit"><span id="login-spinner" class="ui-spinner hidden"></span><span id="login-button-text">Sign in</span></button>
-      </form>
-      <div class="login-meta">{_icon("shield","icon-sm")} <span>Secure internal access · Session protected</span></div>
-    </div>
-  </section>
-</main>
-<script>
+      </form>{register_link}'''
+
+    divider = '<div class="auth-divider"><span>or use a local account</span></div>' if oidc_enabled and local_auth_enabled else ""
+    provider_note = '<div class="provider-note">Authentication is delegated to your organization identity provider.</div>' if oidc_enabled and not local_auth_enabled else ""
+    local_script = ""
+    if local_auth_enabled:
+        local_script = r'''
 const form=document.getElementById('login'),button=document.getElementById('login-button'),spinner=document.getElementById('login-spinner'),buttonText=document.getElementById('login-button-text'),errorBox=document.getElementById('login-error'),errorText=document.getElementById('login-error-text');
-document.getElementById('toggle-password').addEventListener('click',()=>{{const p=document.getElementById('password'); const reveal=p.type==='password'; p.type=reveal?'text':'password'; document.getElementById('toggle-password').setAttribute('aria-label',reveal?'Hide password':'Show password');}});
-form.addEventListener('submit',async(e)=>{{e.preventDefault(); errorBox.classList.add('hidden'); if(!form.reportValidity()) return; button.disabled=true; spinner.classList.remove('hidden'); buttonText.textContent='Signing in…'; try{{const r=await fetch('/auth/login',{{method:'POST',headers:{{'content-type':'application/json'}},credentials:'same-origin',body:JSON.stringify({{username:document.getElementById('username').value.trim(),password:document.getElementById('password').value}})}}); if(!r.ok){{let msg='Unable to sign in. Check your credentials and try again.'; try{{const j=await r.json(); if(j.detail) msg=typeof j.detail==='string'?j.detail:msg}}catch(_){{}} throw new Error(msg)}} window.location.assign('/dashboard')}}catch(err){{errorText.textContent=err.message; errorBox.classList.remove('hidden'); button.disabled=false; spinner.classList.add('hidden'); buttonText.textContent='Sign in'; document.getElementById('password').focus();}}}});
-</script></body></html>'''
+document.getElementById('toggle-password').addEventListener('click',()=>{const p=document.getElementById('password'); const reveal=p.type==='password'; p.type=reveal?'text':'password'; document.getElementById('toggle-password').setAttribute('aria-label',reveal?'Hide password':'Show password');});
+form.addEventListener('submit',async(e)=>{e.preventDefault(); errorBox.classList.add('hidden'); if(!form.reportValidity()) return; button.disabled=true; spinner.classList.remove('hidden'); buttonText.textContent='Signing in…'; try{const r=await fetch('/auth/login',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({username:document.getElementById('username').value.trim(),password:document.getElementById('password').value})}); if(!r.ok){let msg='Unable to sign in. Check your credentials and try again.'; try{const j=await r.json(); if(j.detail) msg=typeof j.detail==='string'?j.detail:msg}catch(_){} throw new Error(msg)} window.location.assign('/dashboard')}catch(err){errorText.textContent=err.message; errorBox.classList.remove('hidden'); button.disabled=false; spinner.classList.add('hidden'); buttonText.textContent='Sign in'; document.getElementById('password').focus();}});
+'''
+
+    return f'''<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · OpenCode Workspace Portal</title><link rel="stylesheet" href="/_ui/app.css"></head>
+<body><main class="login-shell">
+  <section class="login-visual" aria-hidden="true"><div class="login-brand"><span class="brand-mark">{_icon("terminal")}</span><div>OpenCode Workspace Portal<small>Internal developer platform</small></div></div><div class="login-hero"><span class="login-kicker"><span class="status-dot"></span> Secure multi-user workspace gateway</span><h1>Developer workspaces, isolated and ready on demand.</h1><p>Launch persistent OpenCode environments without managing containers, credentials, or runtime cleanup manually.</p><div class="feature-list"><div class="feature-item">{_icon("shield")}<strong>Enterprise identity</strong><span>Use OpenID Connect SSO or optional local portal accounts.</span></div><div class="feature-item">{_icon("database")}<strong>Persistent state</strong><span>Your projects and OpenCode sessions survive runtime recreation.</span></div><div class="feature-item">{_icon("refresh")}<strong>Automatic cleanup</strong><span>Idle runtimes are reclaimed while workspace data remains available.</span></div></div></div><div class="login-foot">OpenCode Multiuser · Enterprise workspace gateway</div></section>
+  <section class="login-panel app-grid-bg"><div class="ui-card ui-card-elevated login-card"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.2rem"><span class="brand-mark">{_icon("terminal")}</span><div><strong style="display:block;font-size:.9rem">OpenCode</strong><span class="text-xs text-muted">Workspace Portal</span></div></div><h2>Welcome back</h2><p>Sign in to access your isolated development workspaces.</p>{notice}<div class="auth-stack">{oidc_block}</div>{divider}{local_block}{provider_note}<div class="login-meta">{_icon("shield","icon-sm")} <span>Secure internal access · Session protected</span></div></div></section>
+</main><script>{local_script}</script></body></html>'''
 
 
-def dashboard_page_html(username: str, notice_html: str, max_slots: int, free_slots: int, idle_minutes: int) -> str:
+def registration_page_html(first_user: bool = False) -> str:
+    role_note = (
+        '<div class="ui-alert ui-alert-success registration-note"><span>' + _icon("shield") + '</span><span><strong>Bootstrap administrator</strong>This is the first account. It will receive the Admin role.</span></div>'
+        if first_user
+        else '<div class="ui-alert registration-note"><span>' + _icon("user") + '</span><span>New local accounts receive the Developer role.</span></div>'
+    )
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Register · OpenCode Workspace Portal</title><link rel="stylesheet" href="/_ui/app.css"></head><body><main class="login-shell"><section class="login-visual" aria-hidden="true"><div class="login-brand"><span class="brand-mark">{_icon("terminal")}</span><div>OpenCode Workspace Portal<small>Internal developer platform</small></div></div><div class="login-hero"><span class="login-kicker"><span class="status-dot"></span> Local portal account</span><h1>Create your developer portal account.</h1><p>Use a strong password. Workspace runtime credentials remain isolated from this portal account.</p></div><div class="login-foot">OpenCode Multiuser · Enterprise workspace gateway</div></section><section class="login-panel app-grid-bg"><div class="ui-card ui-card-elevated login-card"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.2rem"><span class="brand-mark">{_icon("user")}</span><div><strong style="display:block;font-size:.9rem">Create account</strong><span class="text-xs text-muted">Local authentication</span></div></div><h2>Register</h2><p>Create a local account for this OpenCode portal.</p>{role_note}<form id="register" novalidate><div class="form-field"><label class="ui-label" for="username">Username</label><input class="ui-input" id="username" autocomplete="username" pattern="[A-Za-z0-9_.-]+" minlength="3" maxlength="80" required placeholder="e.g. cahya"></div><div class="form-field"><label class="ui-label" for="password">Password</label><input class="ui-input" id="password" type="password" autocomplete="new-password" minlength="12" required placeholder="At least 12 characters"></div><div class="form-field"><label class="ui-label" for="confirm">Confirm password</label><input class="ui-input" id="confirm" type="password" autocomplete="new-password" minlength="12" required placeholder="Repeat your password"></div><div id="register-error" class="ui-alert ui-alert-error login-error hidden" role="alert"><span>{_icon("alert")}</span><span id="register-error-text"></span></div><button id="register-button" class="ui-button ui-button-primary w-full" style="margin-top:1rem" type="submit"><span id="register-spinner" class="ui-spinner hidden"></span><span id="register-button-text">Create account</span></button></form><div class="auth-link-row">Already have an account? <a href="/login">Sign in</a></div></div></section></main><script>const form=document.getElementById('register'),button=document.getElementById('register-button'),spinner=document.getElementById('register-spinner'),text=document.getElementById('register-button-text'),box=document.getElementById('register-error'),err=document.getElementById('register-error-text');form.addEventListener('submit',async e=>{{e.preventDefault();box.classList.add('hidden');if(!form.reportValidity())return;const password=document.getElementById('password').value;if(password!==document.getElementById('confirm').value){{err.textContent='Passwords do not match.';box.classList.remove('hidden');return}}button.disabled=true;spinner.classList.remove('hidden');text.textContent='Creating account…';try{{const r=await fetch('/auth/register',{{method:'POST',headers:{{'content-type':'application/json'}},credentials:'same-origin',body:JSON.stringify({{username:document.getElementById('username').value.trim(),password}})}});if(!r.ok){{let msg='Unable to create account.';try{{const j=await r.json();if(j.detail)msg=typeof j.detail==='string'?j.detail:msg}}catch(_){{}}throw new Error(msg)}}window.location.assign('/dashboard')}}catch(e){{err.textContent=e.message;box.classList.remove('hidden');button.disabled=false;spinner.classList.add('hidden');text.textContent='Create account'}}}});</script></body></html>'''
+
+
+def dashboard_page_html(username: str, notice_html: str, max_slots: int, free_slots: int, idle_minutes: int, role: str = "developer", display_name: str | None = None) -> str:
     safe_user = escape(username)
-    initials = escape((username[:2] or "U").upper())
+    safe_name = escape(display_name or username)
+    safe_role = escape(role or "developer")
+    initials = escape(((display_name or username)[:2] or "U").upper())
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Workspaces · OpenCode</title><link rel="stylesheet" href="/_ui/app.css"></head>
 <body class="app-grid-bg">
-<header class="topbar"><div class="topbar-inner"><a class="topbar-brand" href="/dashboard"><span class="brand-mark">{_icon("terminal")}</span><div><strong>OpenCode</strong><span>Workspace Portal</span></div></a><div class="user-menu"><div class="user-chip"><span class="avatar">{initials}</span><span>{safe_user}</span></div><form id="logout-form" method="post" action="/logout"><button class="ui-button ui-button-ghost" type="submit">{_icon("logout","icon-sm")} Logout</button></form></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a class="topbar-brand" href="/dashboard"><span class="brand-mark">{_icon("terminal")}</span><div><strong>OpenCode</strong><span>Workspace Portal</span></div></a><div class="user-menu"><div class="user-chip"><span class="avatar">{initials}</span><span>{safe_name}</span><span class="role-badge">{safe_role}</span></div><form id="logout-form" method="post" action="/logout"><button class="ui-button ui-button-ghost" type="submit">{_icon("logout","icon-sm")} Logout</button></form></div></div></header>
 <main class="dashboard-main">
   <div class="dashboard-heading"><div><div class="eyebrow">{_icon("layers","icon-sm")} Developer platform</div><h1>Your workspaces</h1><p>Start, resume, and manage isolated OpenCode development environments.</p></div><div class="platform-state"><span class="status-dot"></span> Platform online</div></div>
   {notice_html}
