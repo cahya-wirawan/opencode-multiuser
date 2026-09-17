@@ -27,6 +27,7 @@ from .runtime import (
     workspace_last_activity,
     workspace_secret_path,
     read_workspace_stop_reason,
+    remove_workspace_data,
     write_workspace_stop_reason,
 )
 from .schemas import (
@@ -729,6 +730,25 @@ def stop(workspace_id: str, user: User = Depends(current_user), db: Session = De
     _release_workspace(ws, db, reason="manual")
     db.refresh(ws)
     return _workspace_response(ws)
+
+
+@app.delete("/workspaces/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_workspace(workspace_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    ws = db.scalar(select(Workspace).where(Workspace.id == workspace_id, Workspace.user_id == user.id))
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    if ws.status not in (WorkspaceStatus.STOPPED, WorkspaceStatus.ERROR):
+        _release_workspace(ws, db, reason="removed")
+
+    try:
+        remove_workspace_data(ws.user_id, ws.project_slug)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail="Workspace data could not be removed") from exc
+
+    db.delete(ws)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.get("/_portal/widget.css", response_class=PlainTextResponse)

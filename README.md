@@ -1,6 +1,6 @@
 # OpenCode Multiuser
 
-**Current version: 0.9.0**
+**Current version: 0.10.0**
 
 OpenCode Multiuser turns OpenCode into a centrally managed, multi-user developer platform for enterprise and internal engineering environments. It provides authenticated access to isolated, disposable OpenCode workspaces while keeping project files and OpenCode state persistent across container restarts.
 
@@ -148,6 +148,11 @@ Proxy browser traffic through gateway
 
 `MAX_SLOTS=10` means **up to ten simultaneous workspace containers**. It does not prestart ten containers.
 
+Stopping a workspace preserves its project and OpenCode state for a later start.
+The dashboard's **Remove** action is different: after an explicit confirmation,
+it stops any active runtime, deletes the workspace record, and permanently
+removes that workspace's project files and OpenCode data.
+
 ## Security model
 
 The project is designed around disposable runtimes and explicit trust boundaries:
@@ -217,8 +222,8 @@ Log in again as the rootless service user afterward.
 ## Installation
 
 ```bash
-unzip opencode-multiuser-0.9.0.zip
-cd opencode-multiuser-0.9.0
+unzip opencode-multiuser-0.10.0.zip
+cd opencode-multiuser-0.10.0
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
@@ -717,10 +722,10 @@ Show or change the version:
 
 ```bash
 python3 scripts/version.py show
-python3 scripts/version.py bump patch   # 0.9.0 -> 0.9.1
-python3 scripts/version.py bump minor   # 0.9.0 -> 0.10.0
-python3 scripts/version.py bump major   # 0.9.0 -> 1.0.0
-python3 scripts/version.py set 0.10.0
+python3 scripts/version.py bump patch   # 0.10.0 -> 0.10.1
+python3 scripts/version.py bump minor   # 0.10.0 -> 0.11.0
+python3 scripts/version.py bump major   # 0.10.0 -> 1.0.0
+python3 scripts/version.py set 0.11.0
 ```
 
 Build a release archive and checksum:

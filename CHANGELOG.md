@@ -4,6 +4,23 @@ All notable changes to **OpenCode Multiuser** are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINOR.PATCH`. The historical v6.x development lineage predates the centralized version file; version **0.8.0** is the first release where the application, package metadata, API, UI, installer, and release archive all read from one version source.
 
+## 0.10.0
+
+### Added
+
+- User-facing workspace removal with an explicit irreversible confirmation.
+- `DELETE /workspaces/{workspace_id}` to stop an active runtime, release its slot, remove its record, and permanently delete its project and OpenCode data.
+- Committed `uv.lock` and locked development, release, and production-install dependency workflows.
+
+### Changed
+
+- The injected Portal control now sits below the OpenCode header menu.
+- The legacy Traefik host-name test now covers the current single-ingress workspace URL.
+
+### Safety
+
+- Workspace deletion rejects dot-segment project slugs and refuses unsafe filesystem paths before recursive removal.
+
 ## 0.9.0
 
 ### Added

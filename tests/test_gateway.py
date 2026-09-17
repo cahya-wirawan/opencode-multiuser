@@ -59,6 +59,60 @@ def test_workspace_activity_file(monkeypatch, tmp_path: Path):
     assert runtime.workspace_last_activity("user-1", "project-1") is not None
 
 
+def test_remove_workspace_data_removes_only_the_selected_workspace(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(runtime.settings, "data_root", str(tmp_path))
+    selected = runtime.workspace_root("user-1", "project-1")
+    other = runtime.workspace_root("user-1", "project-2")
+    runtime.workspace_paths("user-1", "project-1")
+    runtime.workspace_paths("user-1", "project-2")
+
+    runtime.remove_workspace_data("user-1", "project-1")
+
+    assert not selected.exists()
+    assert other.exists()
+
+
+def test_workspace_root_rejects_dot_segments(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(runtime.settings, "data_root", str(tmp_path))
+    for slug in (".", ".."):
+        try:
+            runtime.workspace_root("user-1", slug)
+            assert False, f"{slug} should be rejected"
+        except ValueError:
+            pass
+
+
+def test_delete_workspace_removes_owned_record_and_data(monkeypatch, tmp_path: Path):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app import main
+    from app.db import Base
+    from app.models import User, Workspace, WorkspaceStatus
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    monkeypatch.setattr(runtime.settings, "data_root", str(tmp_path))
+    with Session() as db:
+        user = User(username="alice", password_hash="x", auth_provider="local")
+        db.add(user)
+        db.flush()
+        workspace = Workspace(
+            user_id=user.id,
+            project_slug="project-1",
+            status=WorkspaceStatus.STOPPED,
+        )
+        db.add(workspace)
+        db.commit()
+        runtime.workspace_paths(user.id, workspace.project_slug)
+
+        response = main.delete_workspace(workspace.id, user, db)
+
+        assert response.status_code == 204
+        assert db.get(Workspace, workspace.id) is None
+        assert not runtime.workspace_root(user.id, workspace.project_slug).exists()
+
+
 def test_wait_workspace_ready(monkeypatch):
     class FakeResponse:
         status = 200
@@ -146,6 +200,9 @@ def test_modern_dashboard_has_operational_feedback():
     assert 'Logging out…' in html
     assert 'toast-region' in html
     assert 'stop-dialog' in html
+    assert 'remove-dialog' in html
+    assert 'Remove workspace permanently?' in html
+    assert "method:'DELETE'" in html
 
 
 def test_login_ui_supports_oidc_and_local_fallback():

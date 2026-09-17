@@ -5,4 +5,4 @@ This module is the single source of truth for the application version.
 Use ``python3 scripts/version.py`` to inspect or update it.
 """
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"

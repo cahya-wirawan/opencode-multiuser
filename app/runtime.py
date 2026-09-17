@@ -2,6 +2,7 @@ import base64
 import http.client
 import re
 import secrets
+import shutil
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -44,7 +45,7 @@ def ensure_network() -> None:
 
 
 def workspace_root(user_id: str, project_slug: str) -> Path:
-    if not _SAFE.match(project_slug):
+    if project_slug in {".", ".."} or not _SAFE.fullmatch(project_slug):
         raise ValueError("invalid project slug")
     return settings.expanded_data_root / "users" / user_id / project_slug
 
@@ -58,6 +59,16 @@ def workspace_paths(user_id: str, project_slug: str) -> tuple[Path, Path, Path, 
     for path in (workspace, data, state, config):
         path.mkdir(parents=True, exist_ok=True)
     return workspace, data, state, config
+
+
+def remove_workspace_data(user_id: str, project_slug: str) -> None:
+    """Permanently remove one workspace's project and OpenCode state."""
+    root = workspace_root(user_id, project_slug)
+    user_root = settings.expanded_data_root / "users" / user_id
+    if root.parent != user_root or root.is_symlink():
+        raise ValueError("unsafe workspace data path")
+    if root.exists():
+        shutil.rmtree(root)
 
 
 
