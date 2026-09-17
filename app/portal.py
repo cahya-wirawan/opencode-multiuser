@@ -1,12 +1,12 @@
 from html import escape
 
 PORTAL_CSS = r'''
-#oc-mu-portal{position:fixed;top:12px;right:14px;z-index:2147483647;font:13px/1.35 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124}
+#oc-mu-portal{position:fixed;right:16px;bottom:16px;z-index:100;font:13px/1.35 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124}
 #oc-mu-portal *{box-sizing:border-box}
 #oc-mu-portal>summary{list-style:none;display:flex;align-items:center;gap:7px;border:1px solid rgba(0,0,0,.16);border-radius:10px;background:rgba(255,255,255,.97);color:#334155;padding:8px 11px;box-shadow:0 8px 24px rgba(15,23,42,.12);backdrop-filter:blur(12px);cursor:pointer;user-select:none}
 #oc-mu-portal>summary::-webkit-details-marker{display:none}
 #oc-mu-portal .ocmu-dot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.12);display:inline-block}
-#oc-mu-portal .ocmu-menu{position:absolute;right:0;top:calc(100% + 7px);width:225px;border:1px solid rgba(0,0,0,.16);border-radius:12px;background:#fff;box-shadow:0 18px 45px rgba(15,23,42,.18);overflow:hidden}
+#oc-mu-portal .ocmu-menu{position:absolute;right:0;bottom:calc(100% + 7px);width:225px;border:1px solid rgba(0,0,0,.16);border-radius:12px;background:#fff;box-shadow:0 18px 45px rgba(15,23,42,.18);overflow:hidden}
 #oc-mu-portal .ocmu-head{padding:10px 12px;border-bottom:1px solid #e5e7eb;background:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 #oc-mu-portal form{margin:0;padding:0}
 #oc-mu-portal a,#oc-mu-portal button.ocmu-item{display:block;width:100%;border:0;border-radius:0;background:#fff;color:#202124;text-align:left;text-decoration:none;padding:10px 12px;font:inherit;cursor:pointer}

@@ -19,6 +19,7 @@ dependencies = [
   "PyJWT>=2.10,<3",
   "argon2-cffi>=25.1,<26",
   "httpx>=0.28,<1",
+  "httpx2",
   "websockets>=15,<17",
   "Authlib>=1.8,<2",
   "itsdangerous>=2.2,<3",

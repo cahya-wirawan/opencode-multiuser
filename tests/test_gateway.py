@@ -100,6 +100,14 @@ def test_portal_widget_injection_is_idempotent():
     assert second.count('id="oc-mu-portal"') == 1
 
 
+def test_portal_widget_avoids_the_opencode_header_menu():
+    from app.portal import PORTAL_CSS
+
+    assert 'bottom:16px' in PORTAL_CSS
+    assert 'bottom:calc(100% + 7px)' in PORTAL_CSS
+    assert 'z-index:2147483647' not in PORTAL_CSS
+
+
 def test_forward_headers_forces_identity_encoding(monkeypatch):
     monkeypatch.setattr(gateway.settings, "session_cookie_name", "oc_session")
     monkeypatch.setattr(gateway.settings, "workspace_cookie_name", "oc_workspace")

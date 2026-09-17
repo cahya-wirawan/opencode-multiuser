@@ -246,6 +246,11 @@ The installer configures:
   traefik-dynamic/
 ```
 
+It bootstraps `uv` inside the application virtual environment and installs the
+production dependency set from the committed `uv.lock`. Installation fails if
+the release archive omits that lockfile; it never resolves a newer dependency
+set during deployment.
+
 Default listeners are:
 
 ```text
@@ -674,6 +679,30 @@ PYTHON_BIN=python3.11 \
 
 On later upgrades, `install.sh` reuses the persisted `OPENCODE_VERSION` unless `OPENCODE_VERSION` is explicitly supplied in the shell.
 
+## Development
+
+Dependencies are resolved in the committed `uv.lock`. Install `uv` using its
+supported distribution for your development machine, then create the locked
+development environment and run tests with:
+
+```bash
+uv sync --locked --extra dev
+uv run pytest -q
+```
+
+Verify that dependency declarations and the lockfile agree before committing or
+cutting a release:
+
+```bash
+uv lock --check
+```
+
+When intentionally changing a dependency declaration, run `uv lock` and commit
+both `pyproject.toml` and `uv.lock`. To intentionally refresh resolved versions
+without changing declarations, use `uv lock --upgrade` and review the lockfile
+diff before committing it. The production installer uses `uv sync --frozen
+--no-dev`, so it installs exactly the locked production dependency set.
+
 ## Versioning and releases
 
 OpenCode Multiuser follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`). The single source of truth is:
@@ -712,7 +741,8 @@ A typical release flow is:
 ```bash
 python3 scripts/version.py bump patch
 # update CHANGELOG.md
-python3 -m pytest -q
+uv lock --check
+uv run pytest -q
 ./scripts/package-release.sh
 ```
 

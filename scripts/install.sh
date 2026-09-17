@@ -15,7 +15,7 @@ SELF_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
 # v6.4+ requires the portal injection module. Refuse to perform a partial
 # upgrade if the extracted source tree is incomplete.
-for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py app/version.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py app/version.py uv.lock; do
   if [[ ! -f "$SELF_DIR/$required_file" ]]; then
     echo "ERROR: $SELF_DIR/$required_file is missing." >&2
     echo "Extract the complete release archive and run install.sh from that tree." >&2
@@ -142,7 +142,7 @@ fi
 
 rsync -a --delete --exclude .venv --exclude .pytest_cache "$SELF_DIR/" "$TARGET/"
 
-for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py app/version.py; do
+for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py app/version.py uv.lock; do
   if [[ ! -f "$TARGET/$required_file" ]]; then
     echo "ERROR: upgrade copy is incomplete: $TARGET/$required_file was not installed." >&2
     exit 1
@@ -291,8 +291,11 @@ rm -f "$DATA"/traefik-dynamic/workspace-*.yml
 
 rm -rf "$TARGET/.venv"
 "$PYTHON_BIN" -m venv "$TARGET/.venv"
-"$TARGET/.venv/bin/python" -m pip install --upgrade pip
-"$TARGET/.venv/bin/python" -m pip install -e "$TARGET"
+"$TARGET/.venv/bin/python" -m pip install --upgrade pip uv
+(
+  cd "$TARGET"
+  "$TARGET/.venv/bin/uv" sync --frozen --no-dev
+)
 
 EFFECTIVE_OPENCODE_VERSION=$(sed -n 's/^OPENCODE_VERSION=//p' "$CFG/control-plane.env" | tail -1)
 EFFECTIVE_OPENCODE_VERSION=${EFFECTIVE_OPENCODE_VERSION:-$OPENCODE_VERSION}
