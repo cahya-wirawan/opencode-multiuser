@@ -299,6 +299,9 @@ OPENCODE_VERSION=1.18.30
 OPENCODE_REGISTRY_URL=https://registry.npmjs.org/opencode-ai/latest
 OPENCODE_UPDATE_TIMEOUT_SECONDS=900
 
+DATA_ROOT=/srv/opencode-multiuser/data
+TRAEFIK_DYNAMIC_DIR=/srv/opencode-multiuser/traefik-dynamic
+
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
@@ -320,6 +323,19 @@ OIDC_DEFAULT_ROLE=developer
 ```
 
 When serving the portal over plain HTTP, keep `COOKIE_SECURE=false`. Set it to `true` only after the public endpoint is genuinely HTTPS.
+
+For a fresh installation, override the default home-directory locations by passing
+absolute paths to the installer:
+
+```bash
+DATA_ROOT=/srv/opencode-multiuser/data \
+TRAEFIK_DYNAMIC_DIR=/srv/opencode-multiuser/traefik-dynamic \
+PYTHON_BIN=python3.11 ./scripts/install.sh
+```
+
+The installer persists both values in `control-plane.env`, creates the needed
+directories, and configures the Traefik container mounts accordingly. On later
+upgrades it retains the persisted paths unless explicitly overridden again.
 
 ## Authentication
 

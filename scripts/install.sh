@@ -7,6 +7,10 @@ if [[ -n "${OPENCODE_VERSION+x}" ]]; then OPENCODE_VERSION_EXPLICIT=1; fi
 OPENCODE_VERSION=${OPENCODE_VERSION:-1.18.30}
 if [[ -n "${CONTROL_PLANE_PORT+x}" ]]; then CONTROL_PLANE_PORT_EXPLICIT=1; fi
 CONTROL_PLANE_PORT=${CONTROL_PLANE_PORT:-8010}
+if [[ -n "${DATA_ROOT+x}" ]]; then DATA_ROOT_EXPLICIT=1; fi
+DATA_ROOT=${DATA_ROOT:-}
+if [[ -n "${TRAEFIK_DYNAMIC_DIR+x}" ]]; then TRAEFIK_DYNAMIC_DIR_EXPLICIT=1; fi
+TRAEFIK_DYNAMIC_DIR=${TRAEFIK_DYNAMIC_DIR:-}
 CONTROL_PLANE_BIND=${CONTROL_PLANE_BIND:-0.0.0.0}
 TRAEFIK_PUBLIC_PORT=${TRAEFIK_PUBLIC_PORT:-8443}
 TRAEFIK_ENTRYPOINT=${TRAEFIK_ENTRYPOINT:-websecure}
@@ -109,9 +113,8 @@ TARGET="$HOME/opt/opencode-multiuser"
 CFG="$HOME/.config/opencode-multiuser"
 QUADLET="$HOME/.config/containers/systemd"
 USER_SYSTEMD="$HOME/.config/systemd/user"
-DATA="$HOME/.local/share/opencode-multiuser"
 
-mkdir -p "$TARGET" "$CFG" "$QUADLET" "$USER_SYSTEMD" "$DATA/traefik-dynamic" "$DATA/traefik"
+mkdir -p "$TARGET" "$CFG" "$QUADLET" "$USER_SYSTEMD"
 
 # On upgrades, reuse persisted public host and port unless explicitly overridden.
 if [[ -f "$CFG/control-plane.env" ]]; then
@@ -127,7 +130,26 @@ if [[ -f "$CFG/control-plane.env" ]]; then
     persisted_opencode_version=$(sed -n 's/^OPENCODE_VERSION=//p' "$CFG/control-plane.env" | tail -1)
     [[ -n "$persisted_opencode_version" ]] && OPENCODE_VERSION=$persisted_opencode_version
   fi
+  if [[ -z "${DATA_ROOT_EXPLICIT:-}" ]]; then
+    persisted_data_root=$(sed -n 's/^DATA_ROOT=//p' "$CFG/control-plane.env" | tail -1)
+    [[ -n "$persisted_data_root" ]] && DATA_ROOT=$persisted_data_root
+  fi
+  if [[ -z "${TRAEFIK_DYNAMIC_DIR_EXPLICIT:-}" ]]; then
+    persisted_traefik_dynamic_dir=$(sed -n 's/^TRAEFIK_DYNAMIC_DIR=//p' "$CFG/control-plane.env" | tail -1)
+    [[ -n "$persisted_traefik_dynamic_dir" ]] && TRAEFIK_DYNAMIC_DIR=$persisted_traefik_dynamic_dir
+  fi
 fi
+
+DATA_ROOT=${DATA_ROOT//%h/$HOME}
+TRAEFIK_DYNAMIC_DIR=${TRAEFIK_DYNAMIC_DIR//%h/$HOME}
+DATA_ROOT=${DATA_ROOT:-"$HOME/.local/share/opencode-multiuser"}
+TRAEFIK_DYNAMIC_DIR=${TRAEFIK_DYNAMIC_DIR:-"$DATA_ROOT/traefik-dynamic"}
+if [[ "$DATA_ROOT" != /* || "$TRAEFIK_DYNAMIC_DIR" != /* ]]; then
+  echo "ERROR: DATA_ROOT and TRAEFIK_DYNAMIC_DIR must be absolute paths." >&2
+  exit 1
+fi
+TRAEFIK_STATE_DIR="$DATA_ROOT/traefik"
+mkdir -p "$DATA_ROOT" "$TRAEFIK_DYNAMIC_DIR" "$TRAEFIK_STATE_DIR"
 
 systemctl --user stop opencode-control-plane.service >/dev/null 2>&1 || true
 
@@ -149,6 +171,13 @@ for required_file in app/portal.py app/ui.py app/oidc.py app/opencode_update.py 
   fi
 done
 cp "$TARGET/systemd/quadlet/"* "$QUADLET/"
+DATA_ROOT_SED=$(printf '%s' "$DATA_ROOT" | sed 's/[&|\\]/\\&/g')
+TRAEFIK_DYNAMIC_DIR_SED=$(printf '%s' "$TRAEFIK_DYNAMIC_DIR" | sed 's/[&|\\]/\\&/g')
+TRAEFIK_STATE_DIR_SED=$(printf '%s' "$TRAEFIK_STATE_DIR" | sed 's/[&|\\]/\\&/g')
+sed \
+  -e "s|__TRAEFIK_DYNAMIC_DIR__|$TRAEFIK_DYNAMIC_DIR_SED|g" \
+  -e "s|__TRAEFIK_STATE_DIR__|$TRAEFIK_STATE_DIR_SED|g" \
+  "$TARGET/systemd/quadlet/traefik.container" > "$QUADLET/traefik.container"
 cp "$TARGET/systemd/opencode-control-plane.service" "$USER_SYSTEMD/"
 cp "$TARGET/traefik/traefik.yml" "$CFG/traefik.yml"
 
@@ -197,7 +226,7 @@ OPENCODE_VERSION=$OPENCODE_VERSION
 OPENCODE_REGISTRY_URL=https://registry.npmjs.org/opencode-ai/latest
 OPENCODE_UPDATE_TIMEOUT_SECONDS=900
 PODMAN_NETWORK=opencode-net
-DATA_ROOT=$DATA
+DATA_ROOT=$DATA_ROOT
 MAX_SLOTS=10
 WORKSPACE_MEMORY=8g
 WORKSPACE_CPUS=4
@@ -208,7 +237,7 @@ WORKSPACE_IDLE_TIMEOUT_MINUTES=30
 WORKSPACE_REAPER_INTERVAL_SECONDS=60
 STOP_WORKSPACES_ON_LOGOUT=true
 WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE
-TRAEFIK_DYNAMIC_DIR=$DATA/traefik-dynamic
+TRAEFIK_DYNAMIC_DIR=$TRAEFIK_DYNAMIC_DIR
 TRAEFIK_TLS=false
 TRAEFIK_CERT_RESOLVER=letsencrypt
 ENV
@@ -248,6 +277,14 @@ else
   grep -q '^WORKSPACE_IDLE_TIMEOUT_MINUTES=' "$CFG/control-plane.env" || echo "WORKSPACE_IDLE_TIMEOUT_MINUTES=30" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_REAPER_INTERVAL_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_REAPER_INTERVAL_SECONDS=60" >> "$CFG/control-plane.env"
   grep -q '^STOP_WORKSPACES_ON_LOGOUT=' "$CFG/control-plane.env" || echo "STOP_WORKSPACES_ON_LOGOUT=true" >> "$CFG/control-plane.env"
+  grep -q '^DATA_ROOT=' "$CFG/control-plane.env" || echo "DATA_ROOT=$DATA_ROOT" >> "$CFG/control-plane.env"
+  grep -q '^TRAEFIK_DYNAMIC_DIR=' "$CFG/control-plane.env" || echo "TRAEFIK_DYNAMIC_DIR=$TRAEFIK_DYNAMIC_DIR" >> "$CFG/control-plane.env"
+  if [[ -n "${DATA_ROOT_EXPLICIT:-}" ]]; then
+    if grep -q '^DATA_ROOT=' "$CFG/control-plane.env"; then sed -i "s|^DATA_ROOT=.*|DATA_ROOT=$DATA_ROOT_SED|" "$CFG/control-plane.env"; else echo "DATA_ROOT=$DATA_ROOT" >> "$CFG/control-plane.env"; fi
+  fi
+  if [[ -n "${TRAEFIK_DYNAMIC_DIR_EXPLICIT:-}" ]]; then
+    if grep -q '^TRAEFIK_DYNAMIC_DIR=' "$CFG/control-plane.env"; then sed -i "s|^TRAEFIK_DYNAMIC_DIR=.*|TRAEFIK_DYNAMIC_DIR=$TRAEFIK_DYNAMIC_DIR_SED|" "$CFG/control-plane.env"; else echo "TRAEFIK_DYNAMIC_DIR=$TRAEFIK_DYNAMIC_DIR" >> "$CFG/control-plane.env"; fi
+  fi
 
   # v6 uses one public gateway URL. Rewrite legacy public URL defaults while
   # preserving a custom value if the administrator already set one.

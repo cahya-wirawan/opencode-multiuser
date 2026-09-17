@@ -190,7 +190,7 @@ def test_modern_login_ui_is_local_and_accessible():
 
 
 def test_modern_dashboard_has_operational_feedback():
-    from app.ui import dashboard_page_html
+    from app.ui import APP_CSS, dashboard_page_html
     html = dashboard_page_html('alice', '', 10, 8, 30)
     assert 'Your workspaces' in html
     assert 'Available slots' in html
@@ -203,6 +203,8 @@ def test_modern_dashboard_has_operational_feedback():
     assert 'remove-dialog' in html
     assert 'Remove workspace permanently?' in html
     assert "method:'DELETE'" in html
+    assert 'class="start-field"' in html
+    assert 'grid-template-areas:"field button" "help ."' in APP_CSS
 
 
 def test_login_ui_supports_oidc_and_local_fallback():

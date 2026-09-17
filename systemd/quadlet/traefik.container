@@ -8,8 +8,8 @@ Image=docker.io/library/traefik:v3.5
 ContainerName=opencode-traefik
 Network=opencode.network
 Volume=%h/.config/opencode-multiuser/traefik.yml:/etc/traefik/traefik.yml:ro,Z
-Volume=%h/.local/share/opencode-multiuser/traefik-dynamic:/etc/traefik/dynamic:ro,Z
-Volume=%h/.local/share/opencode-multiuser/traefik:/var/lib/traefik:Z
+Volume=__TRAEFIK_DYNAMIC_DIR__:/etc/traefik/dynamic:ro,Z
+Volume=__TRAEFIK_STATE_DIR__:/var/lib/traefik:Z
 PublishPort=8080:8080
 PublishPort=8443:8443
 
