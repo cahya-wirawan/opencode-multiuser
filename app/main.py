@@ -278,7 +278,7 @@ async def _idle_reaper_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # v6.4.3 fixes the old (user_id, project_slug, status) uniqueness rule.
+    # v0.4.3 fixes the old (user_id, project_slug, status) uniqueness rule.
     # Drop it before create/reconciliation. ALTER TABLE IF EXISTS makes this
     # safe for a completely fresh PostgreSQL installation as well.
     settings.validate_auth()

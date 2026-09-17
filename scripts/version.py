@@ -6,7 +6,7 @@ Examples:
     python3 scripts/version.py bump patch
     python3 scripts/version.py bump minor
     python3 scripts/version.py bump major
-    python3 scripts/version.py set 6.9.0
+    python3 scripts/version.py set 0.9.0
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def read_version() -> str:
 
 def validate(version: str) -> str:
     if not SEMVER_RE.fullmatch(version):
-        raise SystemExit("Version must use MAJOR.MINOR.PATCH, for example 6.9.0")
+        raise SystemExit("Version must use MAJOR.MINOR.PATCH, for example 0.9.0")
     return version
 
 

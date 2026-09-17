@@ -2,9 +2,9 @@
 
 All notable changes to **OpenCode Multiuser** are documented here.
 
-The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINOR.PATCH`. The historical v6.x development lineage predates the centralized version file; version **6.8.0** is the first release where the application, package metadata, API, UI, installer, and release archive all read from one version source.
+The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINOR.PATCH`. The historical v6.x development lineage predates the centralized version file; version **0.8.0** is the first release where the application, package metadata, API, UI, installer, and release archive all read from one version source.
 
-## 6.9.0
+## 0.9.0
 
 ### Added
 
@@ -32,7 +32,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - The active workspace image is retagged only after the candidate image successfully reports the requested OpenCode version.
 - Failed builds/tests leave the previous `localhost/opencode-workspace:latest` image and persisted configured version unchanged.
 
-## 6.8.0
+## 0.8.0
 
 ### Added
 
@@ -49,7 +49,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Release artifact naming now follows `opencode-multiuser-<version>.zip`.
 - Reorganized documentation so README focuses on product/operations documentation and CHANGELOG owns detailed release history.
 
-## 6.7.1
+## 0.7.1
 
 ### Fixed
 
@@ -57,7 +57,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Changed hero foreground typography from white/light text to dark navy tones suitable for the light-blue background.
 - Adjusted supporting copy, labels, branding, feature cards, and footer text to maintain accessible contrast consistently.
 
-## 6.7.0
+## 0.7.0
 
 ### Added
 
@@ -83,7 +83,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Concurrent administrative changes are serialized on PostgreSQL to protect last-admin guarantees.
 - OIDC identities are disabled rather than deleted because identity lifecycle belongs to the external provider.
 
-## 6.6.0
+## 0.6.0
 
 ### Added
 
@@ -112,7 +112,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - OIDC access/refresh tokens are not persisted by the portal.
 - Bootstrap documentation warns that the first account is privileged and should be created on a trusted/internal network.
 
-## 6.5.0
+## 0.5.0
 
 ### Added
 
@@ -138,7 +138,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 
 - Portal Dashboard action now goes directly to `/dashboard` rather than getting stuck at the intermediate `/_portal/dashboard` path.
 
-## 6.4.4
+## 0.4.4
 
 ### Improved
 
@@ -148,7 +148,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Portal management widget updates its status immediately when Stop or Logout is pressed.
 - Dashboard action in the Portal widget navigates directly to `/dashboard`.
 
-## 6.4.3
+## 0.4.3
 
 ### Fixed
 
@@ -159,7 +159,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - `/workspaces` shows only the newest row per project while preserving older history in PostgreSQL.
 - Prevented startup reconciliation from crashing with PostgreSQL `UniqueViolation` when stopping historical stale workspaces.
 
-## 6.4.2
+## 0.4.2
 
 ### Added
 
@@ -173,14 +173,14 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Missing or unreachable workspace containers are automatically released and their slots returned.
 - Browser navigation is redirected to the dashboard with a recovery message when a runtime disappears.
 
-## 6.4.1
+## 0.4.1
 
 ### Fixed
 
 - Added installer integrity checks ensuring the newly introduced `app/portal.py` exists in both the extracted release tree and installed target.
 - Prevented partial upgrades where `gateway.py` imported a Portal module that had not been copied.
 
-## 6.4.0
+## 0.4.0
 
 ### Added
 
@@ -195,7 +195,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Essential Portal actions use native links/forms so they remain functional even if OpenCode applies restrictive CSP rules.
 - Installer explicitly restarts the control-plane service after upgrades so new gateway code becomes active immediately.
 
-## 6.3.0
+## 0.3.0
 
 ### Added
 
@@ -207,7 +207,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - WebSocket close code `4409` for idle-reclaimed workspaces.
 - Start action for stopped/error workspace cards so users can resume without retyping the project name.
 
-## 6.2.0
+## 0.2.0
 
 ### Added
 
@@ -225,7 +225,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - `/workspaces/start` no longer reports success immediately after Podman says the container is `Up`; it waits for authenticated `/global/health` to respond.
 - Failed readiness removes the just-created container and returns the slot instead of exposing a transient backend error.
 
-## 6.1.0
+## 0.1.0
 
 ### Fixed
 
@@ -233,7 +233,7 @@ The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINO
 - Added explicit `COOKIE_SECURE` configuration.
 - Corrected upgrade behavior where a preserved HTTPS control-plane URL caused Secure cookies to be issued while the portal was still running over HTTP, leading to `Invalid or missing authentication` after login.
 
-## 6.0.0
+## 0.0.0
 
 ### Added
 

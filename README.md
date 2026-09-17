@@ -1,6 +1,6 @@
 # OpenCode Multiuser
 
-**Current version: 6.9.0**
+**Current version: 0.9.0**
 
 OpenCode Multiuser turns OpenCode into a centrally managed, multi-user developer platform for enterprise and internal engineering environments. It provides authenticated access to isolated, disposable OpenCode workspaces while keeping project files and OpenCode state persistent across container restarts.
 
@@ -217,8 +217,8 @@ Log in again as the rootless service user afterward.
 ## Installation
 
 ```bash
-unzip opencode-multiuser-6.9.0.zip
-cd opencode-multiuser-6.9.0
+unzip opencode-multiuser-0.9.0.zip
+cd opencode-multiuser-0.9.0
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
@@ -717,10 +717,10 @@ Show or change the version:
 
 ```bash
 python3 scripts/version.py show
-python3 scripts/version.py bump patch   # 6.9.0 -> 6.9.1
-python3 scripts/version.py bump minor   # 6.9.0 -> 6.10.0
-python3 scripts/version.py bump major   # 6.9.0 -> 7.0.0
-python3 scripts/version.py set 6.10.0
+python3 scripts/version.py bump patch   # 0.9.0 -> 0.9.1
+python3 scripts/version.py bump minor   # 0.9.0 -> 0.10.0
+python3 scripts/version.py bump major   # 0.9.0 -> 1.0.0
+python3 scripts/version.py set 0.10.0
 ```
 
 Build a release archive and checksum:
@@ -765,4 +765,4 @@ Before exposing the portal beyond a controlled test network:
 
 ## Release history
 
-Detailed feature-by-feature changes have intentionally been moved out of this README. See [`CHANGELOG.md`](CHANGELOG.md) for the full history from the earliest prototype through version 6.9.0.
+Detailed feature-by-feature changes have intentionally been moved out of this README. See [`CHANGELOG.md`](CHANGELOG.md) for the full history from the earliest prototype through version 0.9.0.
