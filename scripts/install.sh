@@ -320,11 +320,11 @@ sed \
   -e "s|__BASE_DOMAIN__|$BASE_DOMAIN|g" \
   -e "s|__CONTROL_PLANE_PORT__|$EFFECTIVE_CONTROL_PLANE_PORT|g" \
   -e "s|__TRAEFIK_ENTRYPOINT__|$EFFECTIVE_TRAEFIK_ENTRYPOINT|g" \
-  "$TARGET/traefik/dynamic/control-plane.yml" > "$DATA/traefik-dynamic/control-plane.yml"
+  "$TARGET/traefik/dynamic/control-plane.yml" > "$TRAEFIK_DYNAMIC_DIR/control-plane.yml"
 
 # Remove v5 per-workspace hostname routes. v6 proxies every workspace through
 # the single control-plane/gateway route.
-rm -f "$DATA"/traefik-dynamic/workspace-*.yml
+rm -f "$TRAEFIK_DYNAMIC_DIR"/workspace-*.yml
 
 rm -rf "$TARGET/.venv"
 "$PYTHON_BIN" -m venv "$TARGET/.venv"

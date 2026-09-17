@@ -4,6 +4,22 @@ All notable changes to **OpenCode Multiuser** are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINOR.PATCH`. The historical v6.x development lineage predates the centralized version file; version **0.8.0** is the first release where the application, package metadata, API, UI, installer, and release archive all read from one version source.
 
+## 0.11.1
+
+### Fixed
+
+- Installer use of the configurable `TRAEFIK_DYNAMIC_DIR` for generated and legacy Traefik route files.
+
+## 0.11.0
+
+### Added
+
+- Installer overrides for `DATA_ROOT` and `TRAEFIK_DYNAMIC_DIR`, including matching Traefik Quadlet mounts.
+
+### Changed
+
+- The dashboard Start workspace button aligns with the project-slug input, with helper text on its own row.
+
 ## 0.10.0
 
 ### Added
