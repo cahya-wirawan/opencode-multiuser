@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     traefik_tls: bool = False
     traefik_cert_resolver: str = "letsencrypt"
     opencode_cors: str = ""
+    # Comma-separated provider IDs applied as OpenCode managed settings to
+    # every workspace. Managed settings take precedence over project config.
+    opencode_enabled_providers: str = ""
+    opencode_disabled_providers: str = ""
 
     @property
     def expanded_data_root(self) -> Path:
@@ -69,6 +73,24 @@ class Settings(BaseSettings):
     @property
     def expanded_traefik_dynamic_dir(self) -> Path:
         return Path(self.traefik_dynamic_dir.replace("%h", str(Path.home()))).expanduser().resolve()
+
+    @staticmethod
+    def _provider_ids(value: str) -> list[str]:
+        """Parse a comma-separated provider policy without changing its order."""
+        result: list[str] = []
+        for provider_id in value.split(","):
+            provider_id = provider_id.strip()
+            if provider_id and provider_id not in result:
+                result.append(provider_id)
+        return result
+
+    @property
+    def enabled_provider_ids(self) -> list[str]:
+        return self._provider_ids(self.opencode_enabled_providers)
+
+    @property
+    def disabled_provider_ids(self) -> list[str]:
+        return self._provider_ids(self.opencode_disabled_providers)
 
     @property
     def oidc_configured(self) -> bool:

@@ -4,6 +4,12 @@ All notable changes to **OpenCode Multiuser** are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/) using `MAJOR.MINOR.PATCH`. The historical v6.x development lineage predates the centralized version file; version **0.8.0** is the first release where the application, package metadata, API, UI, installer, and release archive all read from one version source.
 
+## 0.11.2
+
+### Added
+
+- Central OpenCode provider allowlist and denylist settings, enforced through a read-only managed configuration in every workspace.
+
 ## 0.11.1
 
 ### Fixed

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from app import gateway, runtime, traefik
@@ -12,6 +13,44 @@ def test_workspace_host_port(monkeypatch):
     monkeypatch.setattr(runtime.settings, "workspace_host_port_base", 41000)
     assert runtime.workspace_host_port(1) == 41001
     assert runtime.workspace_host_port(10) == 41010
+
+
+def test_managed_provider_policy_is_written_under_data_root(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(runtime.settings, "data_root", str(tmp_path))
+    monkeypatch.setattr(runtime.settings, "opencode_enabled_providers", "anthropic, openai,anthropic")
+    monkeypatch.setattr(runtime.settings, "opencode_disabled_providers", "gemini")
+
+    path = runtime.managed_opencode_config_path()
+
+    assert path == tmp_path / "policy" / "opencode.json"
+    assert json.loads(path.read_text()) == {
+        "$schema": "https://opencode.ai/config.json",
+        "disabled_providers": ["gemini"],
+        "enabled_providers": ["anthropic", "openai"],
+    }
+    assert path.stat().st_mode & 0o777 == 0o644
+
+
+def test_workspace_mounts_managed_provider_policy_read_only(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(runtime.settings, "data_root", str(tmp_path))
+    monkeypatch.setattr(runtime.settings, "opencode_enabled_providers", "anthropic")
+    monkeypatch.setattr(runtime.settings, "opencode_disabled_providers", "")
+    monkeypatch.setattr(runtime.settings, "workspace_ready_timeout_seconds", 1)
+    commands: list[list[str]] = []
+
+    def fake_run(args: list[str], check: bool = True):
+        commands.append(args)
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(runtime, "_run", fake_run)
+    monkeypatch.setattr(runtime, "ensure_network", lambda: None)
+    monkeypatch.setattr(runtime, "wait_workspace_ready", lambda *args: None)
+
+    runtime.start_workspace("user-1", "project-1", "workspace-1", 1)
+
+    run_command = next(command for command in commands if command[:2] == ["run", "-d"])
+    assert "--volume" in run_command
+    assert f"{tmp_path}/policy/opencode.json:/etc/opencode/opencode.json:ro,Z" in run_command
 
 
 def test_gateway_strips_routing_and_session_headers(monkeypatch):

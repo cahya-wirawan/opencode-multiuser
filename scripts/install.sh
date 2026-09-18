@@ -5,6 +5,10 @@ if [[ -n "${BASE_DOMAIN+x}" ]]; then BASE_DOMAIN_EXPLICIT=1; fi
 BASE_DOMAIN=${BASE_DOMAIN:-code.example.com}
 if [[ -n "${OPENCODE_VERSION+x}" ]]; then OPENCODE_VERSION_EXPLICIT=1; fi
 OPENCODE_VERSION=${OPENCODE_VERSION:-1.18.30}
+if [[ -n "${OPENCODE_ENABLED_PROVIDERS+x}" ]]; then OPENCODE_ENABLED_PROVIDERS_EXPLICIT=1; fi
+OPENCODE_ENABLED_PROVIDERS=${OPENCODE_ENABLED_PROVIDERS:-}
+if [[ -n "${OPENCODE_DISABLED_PROVIDERS+x}" ]]; then OPENCODE_DISABLED_PROVIDERS_EXPLICIT=1; fi
+OPENCODE_DISABLED_PROVIDERS=${OPENCODE_DISABLED_PROVIDERS:-}
 if [[ -n "${CONTROL_PLANE_PORT+x}" ]]; then CONTROL_PLANE_PORT_EXPLICIT=1; fi
 CONTROL_PLANE_PORT=${CONTROL_PLANE_PORT:-8010}
 if [[ -n "${DATA_ROOT+x}" ]]; then DATA_ROOT_EXPLICIT=1; fi
@@ -130,6 +134,14 @@ if [[ -f "$CFG/control-plane.env" ]]; then
     persisted_opencode_version=$(sed -n 's/^OPENCODE_VERSION=//p' "$CFG/control-plane.env" | tail -1)
     [[ -n "$persisted_opencode_version" ]] && OPENCODE_VERSION=$persisted_opencode_version
   fi
+  if [[ -z "${OPENCODE_ENABLED_PROVIDERS_EXPLICIT:-}" ]]; then
+    persisted_enabled_providers=$(sed -n 's/^OPENCODE_ENABLED_PROVIDERS=//p' "$CFG/control-plane.env" | tail -1)
+    OPENCODE_ENABLED_PROVIDERS=$persisted_enabled_providers
+  fi
+  if [[ -z "${OPENCODE_DISABLED_PROVIDERS_EXPLICIT:-}" ]]; then
+    persisted_disabled_providers=$(sed -n 's/^OPENCODE_DISABLED_PROVIDERS=//p' "$CFG/control-plane.env" | tail -1)
+    OPENCODE_DISABLED_PROVIDERS=$persisted_disabled_providers
+  fi
   if [[ -z "${DATA_ROOT_EXPLICIT:-}" ]]; then
     persisted_data_root=$(sed -n 's/^DATA_ROOT=//p' "$CFG/control-plane.env" | tail -1)
     [[ -n "$persisted_data_root" ]] && DATA_ROOT=$persisted_data_root
@@ -237,6 +249,8 @@ WORKSPACE_IDLE_TIMEOUT_MINUTES=30
 WORKSPACE_REAPER_INTERVAL_SECONDS=60
 STOP_WORKSPACES_ON_LOGOUT=true
 WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE
+OPENCODE_ENABLED_PROVIDERS=$OPENCODE_ENABLED_PROVIDERS
+OPENCODE_DISABLED_PROVIDERS=$OPENCODE_DISABLED_PROVIDERS
 TRAEFIK_DYNAMIC_DIR=$TRAEFIK_DYNAMIC_DIR
 TRAEFIK_TLS=false
 TRAEFIK_CERT_RESOLVER=letsencrypt
@@ -272,6 +286,8 @@ else
   grep -q '^OPENCODE_REGISTRY_URL=' "$CFG/control-plane.env" || echo "OPENCODE_REGISTRY_URL=https://registry.npmjs.org/opencode-ai/latest" >> "$CFG/control-plane.env"
   grep -q '^OPENCODE_UPDATE_TIMEOUT_SECONDS=' "$CFG/control-plane.env" || echo "OPENCODE_UPDATE_TIMEOUT_SECONDS=900" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_HOST_PORT_BASE=' "$CFG/control-plane.env" || echo "WORKSPACE_HOST_PORT_BASE=$WORKSPACE_HOST_PORT_BASE" >> "$CFG/control-plane.env"
+  grep -q '^OPENCODE_ENABLED_PROVIDERS=' "$CFG/control-plane.env" || echo "OPENCODE_ENABLED_PROVIDERS=" >> "$CFG/control-plane.env"
+  grep -q '^OPENCODE_DISABLED_PROVIDERS=' "$CFG/control-plane.env" || echo "OPENCODE_DISABLED_PROVIDERS=" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_READY_TIMEOUT_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_TIMEOUT_SECONDS=45" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_READY_POLL_INTERVAL_SECONDS=' "$CFG/control-plane.env" || echo "WORKSPACE_READY_POLL_INTERVAL_SECONDS=0.5" >> "$CFG/control-plane.env"
   grep -q '^WORKSPACE_IDLE_TIMEOUT_MINUTES=' "$CFG/control-plane.env" || echo "WORKSPACE_IDLE_TIMEOUT_MINUTES=30" >> "$CFG/control-plane.env"
@@ -310,6 +326,21 @@ if [[ -n "${OPENCODE_VERSION_EXPLICIT:-}" ]]; then
     echo "OPENCODE_VERSION=$OPENCODE_VERSION" >> "$CFG/control-plane.env"
   fi
 fi
+
+# Provider policy overrides are persisted just like an explicit OpenCode
+# version. Provider IDs are comma-separated, so escape only sed metacharacters.
+for provider_policy_key in OPENCODE_ENABLED_PROVIDERS OPENCODE_DISABLED_PROVIDERS; do
+  explicit_name="${provider_policy_key}_EXPLICIT"
+  if [[ -n "${!explicit_name:-}" ]]; then
+    provider_policy_value=${!provider_policy_key}
+    provider_policy_sed=$(printf '%s' "$provider_policy_value" | sed 's/[&|\\]/\\&/g')
+    if grep -q "^${provider_policy_key}=" "$CFG/control-plane.env"; then
+      sed -i "s|^${provider_policy_key}=.*|${provider_policy_key}=${provider_policy_sed}|" "$CFG/control-plane.env"
+    else
+      echo "${provider_policy_key}=${provider_policy_value}" >> "$CFG/control-plane.env"
+    fi
+  fi
+done
 
 EFFECTIVE_CONTROL_PLANE_PORT=$(sed -n 's/^CONTROL_PLANE_PORT=//p' "$CFG/control-plane.env" | tail -1)
 EFFECTIVE_CONTROL_PLANE_PORT=${EFFECTIVE_CONTROL_PLANE_PORT:-$CONTROL_PLANE_PORT}

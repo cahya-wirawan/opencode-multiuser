@@ -1,6 +1,6 @@
 # OpenCode Multiuser
 
-**Current version: 0.11.1**
+**Current version: 0.11.2**
 
 OpenCode Multiuser turns OpenCode into a centrally managed, multi-user developer platform for enterprise and internal engineering environments. It provides authenticated access to isolated, disposable OpenCode workspaces while keeping project files and OpenCode state persistent across container restarts.
 
@@ -222,8 +222,8 @@ Log in again as the rootless service user afterward.
 ## Installation
 
 ```bash
-unzip opencode-multiuser-0.11.1.zip
-cd opencode-multiuser-0.11.1
+unzip opencode-multiuser-0.11.2.zip
+cd opencode-multiuser-0.11.2
 
 export BASE_DOMAIN=code-test.example.org
 PYTHON_BIN=python3.11 ./scripts/install.sh
@@ -302,6 +302,11 @@ OPENCODE_UPDATE_TIMEOUT_SECONDS=900
 DATA_ROOT=/srv/opencode-multiuser/data
 TRAEFIK_DYNAMIC_DIR=/srv/opencode-multiuser/traefik-dynamic
 
+# Central OpenCode provider policy (comma-separated provider IDs).
+# These values are enforced for every workspace.
+OPENCODE_ENABLED_PROVIDERS=
+OPENCODE_DISABLED_PROVIDERS=
+
 SESSION_COOKIE_NAME=oc_session
 WORKSPACE_COOKIE_NAME=oc_workspace
 COOKIE_SECURE=false
@@ -336,6 +341,31 @@ PYTHON_BIN=python3.11 ./scripts/install.sh
 The installer persists both values in `control-plane.env`, creates the needed
 directories, and configures the Traefik container mounts accordingly. On later
 upgrades it retains the persisted paths unless explicitly overridden again.
+
+### Central provider policy
+
+Set `OPENCODE_ENABLED_PROVIDERS` to an allowlist, or
+`OPENCODE_DISABLED_PROVIDERS` to deny specific providers, in
+`control-plane.env`. Values are comma-separated OpenCode provider IDs; for
+example:
+
+```bash
+OPENCODE_ENABLED_PROVIDERS=anthropic,openai
+OPENCODE_DISABLED_PROVIDERS=gemini
+```
+
+They may also be supplied during installation or an upgrade:
+
+```bash
+OPENCODE_ENABLED_PROVIDERS=anthropic,openai ./scripts/install.sh
+```
+
+The control plane generates a managed OpenCode configuration and mounts it
+read-only into each workspace at `/etc/opencode/opencode.json`. It is applied
+after user and project configuration, so users cannot override it. If a
+provider appears in both lists, OpenCode disables it. Restart an existing
+workspace after changing the policy; the policy is applied when a workspace is
+started.
 
 ## Authentication
 
@@ -738,9 +768,9 @@ Show or change the version:
 
 ```bash
 python3 scripts/version.py show
-python3 scripts/version.py bump patch   # 0.11.1 -> 0.11.2
-python3 scripts/version.py bump minor   # 0.11.1 -> 0.12.0
-python3 scripts/version.py bump major   # 0.11.1 -> 1.0.0
+python3 scripts/version.py bump patch   # 0.11.2 -> 0.11.3
+python3 scripts/version.py bump minor   # 0.11.2 -> 0.12.0
+python3 scripts/version.py bump major   # 0.11.2 -> 1.0.0
 python3 scripts/version.py set 0.12.0
 ```
 

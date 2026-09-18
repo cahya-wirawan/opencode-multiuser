@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && groupadd --gid "${OPENCODE_GID}" opencode \
  && useradd --create-home --uid "${OPENCODE_UID}" --gid "${OPENCODE_GID}" --shell /bin/bash opencode \
  && mkdir -p /workspace \
+      /etc/opencode \
       /home/opencode/.local/share/opencode \
       /home/opencode/.local/state/opencode \
       /home/opencode/.cache \

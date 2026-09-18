@@ -1,9 +1,11 @@
 import base64
 import http.client
+import json
 import re
 import secrets
 import shutil
 import subprocess
+import tempfile
 import time
 from datetime import datetime, timezone
 from dataclasses import dataclass
@@ -59,6 +61,32 @@ def workspace_paths(user_id: str, project_slug: str) -> tuple[Path, Path, Path, 
     for path in (workspace, data, state, config):
         path.mkdir(parents=True, exist_ok=True)
     return workspace, data, state, config
+
+
+def managed_opencode_config_path() -> Path | None:
+    """Write the administrator provider policy as immutable OpenCode settings."""
+    policy: dict[str, list[str] | str] = {
+        "$schema": "https://opencode.ai/config.json",
+    }
+    if settings.enabled_provider_ids:
+        policy["enabled_providers"] = settings.enabled_provider_ids
+    if settings.disabled_provider_ids:
+        policy["disabled_providers"] = settings.disabled_provider_ids
+    if len(policy) == 1:
+        return None
+
+    policy_dir = settings.expanded_data_root / "policy"
+    policy_dir.mkdir(parents=True, exist_ok=True)
+    path = policy_dir / "opencode.json"
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=policy_dir, prefix=".opencode.", delete=False
+    ) as output:
+        json.dump(policy, output, sort_keys=True)
+        output.write("\n")
+        temporary_path = Path(output.name)
+    temporary_path.chmod(0o644)
+    temporary_path.replace(path)
+    return path
 
 
 def remove_workspace_data(user_id: str, project_slug: str) -> None:
@@ -179,6 +207,7 @@ def wait_workspace_ready(container_name: str, host_port: int, password: str) -> 
 def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id: int) -> RuntimeResult:
     ensure_network()
     workspace, data, state, config = workspace_paths(user_id, project_slug)
+    managed_config = managed_opencode_config_path()
     short = workspace_id.replace("-", "")[:12]
     container_name = f"oc-{slot_id}-{short}"
     password = secrets.token_urlsafe(32)
@@ -217,6 +246,10 @@ def start_workspace(user_id: str, project_slug: str, workspace_id: str, slot_id:
         "--env", "OPENCODE_SERVER_USERNAME=opencode",
         "--env", f"OPENCODE_SERVER_PASSWORD={password}",
     ]
+    if managed_config is not None:
+        args.extend([
+            "--volume", f"{managed_config}:/etc/opencode/opencode.json:ro,Z",
+        ])
     if settings.opencode_cors:
         args.extend(["--env", f"OPENCODE_CORS={settings.opencode_cors}"])
     args.extend([

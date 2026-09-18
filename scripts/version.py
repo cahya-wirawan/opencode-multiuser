@@ -6,7 +6,7 @@ Examples:
     python3 scripts/version.py bump patch
     python3 scripts/version.py bump minor
     python3 scripts/version.py bump major
-    python3 scripts/version.py set 0.11.1
+    python3 scripts/version.py set 0.11.2
 """
 
 from __future__ import annotations
