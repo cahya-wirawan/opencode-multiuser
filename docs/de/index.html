@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>opencode-multiuser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="alternate" hreflang="en" href="../index.html">
+<link rel="alternate" hreflang="de" href="../de/index.html">
+<link rel="alternate" hreflang="id" href="../id/index.html">
+</head>
+<body data-root="" data-top="../" data-page="index.html" data-variant="de-standard" class="page-index has-variants">
+<header class="bar">
+  <a class="brand" href="index.html">opencode-multiuser</a>
+  <div class="search" role="search">
+    <input id="q" type="search" placeholder="Funktion oder Klasse suchen" autocomplete="off"
+           spellcheck="false" aria-label="Funktion oder Klasse suchen" aria-controls="q-results">
+    <kbd class="q-key" aria-hidden="true">/</kbd>
+    <ol id="q-results" role="listbox" hidden></ol>
+  </div>
+  <div class="bar-right">
+    <div class="variant" role="group" aria-label="Sprache und Leserniveau">
+      <select data-switch="lang" aria-label="Sprache" title="Sprache">
+<option value="en" lang="en">English</option><option value="de" lang="de" selected>Deutsch</option><option value="id" lang="id">Bahasa Indonesia</option>      </select>
+    </div>
+<a class="ext" href="https://github.com/cahya-wirawan/opencode-multiuser">Repository</a>  </div>
+</header>
+<div class="frame">
+  <nav class="files" aria-label="Leitfaden und Dateien">
+    <h2 class="nav-h"><a href="index.html#guide">Leitfaden</a></h2>
+    <ul class="guide"><li><span class="grp">Grundlagen</span><ul><li><a href="wiki/architecture-overview.html">Architekturübersicht</a></li></ul></li><li><span class="grp">Benutzer und Zugriff</span><ul><li><a href="wiki/authentication-and-roles.html">Authentifizierung und Rollen</a></li></ul></li><li><span class="grp">Lebenszyklus eines Workspace</span><ul><li><a href="wiki/slots-and-workspace-leases.html">Slots und Workspace-Leases</a></li><li><a href="wiki/starting-a-workspace-runtime.html">Eine Workspace-Runtime starten</a></li></ul></li><li><span class="grp">Anfragepfad</span><ul><li><a href="wiki/gateway-proxy.html">Der Gateway-Proxy</a></li></ul></li><li><span class="grp">Lebenszyklus eines Workspace</span><ul><li><a href="wiki/startup-reconciliation-and-idle-reclamation.html">Start, Abgleich und Rückgewinnung inaktiver Workspaces</a></li></ul></li><li><span class="grp">Administration</span><ul><li><a href="wiki/admin-console-and-engine-updates.html">Admin-Konsole und Engine-Updates</a></li></ul></li><li><span class="grp">Betrieb</span><ul><li><a href="wiki/installation-and-releases.html">Installation, Versionierung und Releases</a></li></ul></li></ul>
+    <h2 class="nav-h">Dateien</h2>
+    <ul class="tree"><li><details open><summary>app/</summary><ul><li><a class="file" href="src/app/__init__.py.html" data-f="app/__init__.py">__init__.py</a></li><li><a class="file" href="src/app/config.py.html" data-f="app/config.py">config.py</a></li><li><a class="file" href="src/app/db.py.html" data-f="app/db.py">db.py</a></li><li><a class="file" href="src/app/gateway.py.html" data-f="app/gateway.py">gateway.py</a></li><li><a class="file" href="src/app/main.py.html" data-f="app/main.py">main.py</a></li><li><a class="file" href="src/app/migrations.py.html" data-f="app/migrations.py">migrations.py</a></li><li><a class="file" href="src/app/models.py.html" data-f="app/models.py">models.py</a></li><li><a class="file" href="src/app/oidc.py.html" data-f="app/oidc.py">oidc.py</a></li><li><a class="file" href="src/app/opencode_update.py.html" data-f="app/opencode_update.py">opencode_update.py</a></li><li><a class="file" href="src/app/portal.py.html" data-f="app/portal.py">portal.py</a></li><li><a class="file" href="src/app/runtime.py.html" data-f="app/runtime.py">runtime.py</a></li><li><a class="file" href="src/app/schemas.py.html" data-f="app/schemas.py">schemas.py</a></li><li><a class="file" href="src/app/security.py.html" data-f="app/security.py">security.py</a></li><li><a class="file" href="src/app/traefik.py.html" data-f="app/traefik.py">traefik.py</a></li><li><a class="file" href="src/app/ui.py.html" data-f="app/ui.py">ui.py</a></li><li><a class="file" href="src/app/version.py.html" data-f="app/version.py">version.py</a></li></ul></details></li><li><details open><summary>scripts/</summary><ul><li><a class="file" href="src/scripts/check-host.sh.html" data-f="scripts/check-host.sh">check-host.sh</a></li><li><a class="file" href="src/scripts/install.sh.html" data-f="scripts/install.sh">install.sh</a></li><li><a class="file" href="src/scripts/package-release.sh.html" data-f="scripts/package-release.sh">package-release.sh</a></li><li><a class="file" href="src/scripts/reset-orphans.sh.html" data-f="scripts/reset-orphans.sh">reset-orphans.sh</a></li><li><a class="file" href="src/scripts/version.py.html" data-f="scripts/version.py">version.py</a></li></ul></details></li><li><details open><summary>tests/</summary><ul><li><a class="file" href="src/tests/test_gateway.py.html" data-f="tests/test_gateway.py">test_gateway.py</a></li><li><a class="file" href="src/tests/test_traefik.py.html" data-f="tests/test_traefik.py">test_traefik.py</a></li><li><a class="file" href="src/tests/test_version.py.html" data-f="tests/test_version.py">test_version.py</a></li></ul></details></li></ul>
+  </nav>
+<main class="home">
+  <h1 class="title">opencode-multiuser</h1>
+  <p class="facts">24 Dateien, 3812 Codezeilen, 209 von 209 Definitionen erklärt, 326 Zeilenanmerkungen.</p>
+
+  <section class="overview"><p>OpenCode Multiuser ermöglicht es vielen Personen, OpenCode über ein einziges Browser-Portal zu nutzen. Eine FastAPI-Control-Plane authentifiziert Benutzer (lokale Konten oder generisches OIDC) und startet dann für jedes Projekt, das ein Benutzer öffnet, einen Wegwerf-Container mit eingeschränkten Rechten unter rootless Podman, in dem <code>opencode serve</code> läuft. Projektdateien und OpenCode-Zustand liegen in Verzeichnissen pro Benutzer auf dem Host, sodass der Container zerstört und neu erstellt werden kann, ohne Arbeit zu verlieren. Die Kapazität ist ein fester Pool nummerierter Slots (<code>MAX_SLOTS</code>); Container werden bei Bedarf erstellt und beim Stoppen, beim Logout oder nach einem Idle-Timeout entfernt.</p><p>Dieselbe FastAPI-App ist zugleich das Gateway. Traefik leitet den einen öffentlichen Hostnamen an sie weiter. Anfragen, die keine Portal-Routen sind, fallen auf einen Catch-all-Proxy in <code>app/gateway.py</code> durch, der den laufenden Workspace des Benutzers findet, die Portal-Session gegen die private Basic-Auth-Zugangsdaten dieses Containers austauscht und HTTP- und WebSocket-Verkehr an einen nur über Loopback erreichbaren Port weiterleitet, der aus dem Slot abgeleitet wird. <code>app/runtime.py</code> ist der einzige Code, der mit Podman spricht, <code>app/models.py</code> und <code>app/migrations.py</code> definieren den PostgreSQL-Zustand, und ein Hintergrund-Reaper gleicht Datenbank-Leases mit den tatsächlich vorhandenen Containern ab.</p></section>
+
+  <p class="howto">Lesen Sie den Leitfaden, um zu erfahren, wie die Teile zusammenpassen, oder öffnen Sie eine Datei und fahren Sie mit der Maus über eine Funktion, Klasse, einen Parameter oder eine Zeile, um zu lesen, was sie tut. Klicken Sie, um eine Erklärung geöffnet zu lassen; drücken Sie <kbd>/</kbd>, um eine Definition zu suchen.</p>
+
+  <section class="guide-list" id="guide">
+    <h2>Der Leitfaden</h2>
+    <ol>
+      <li><a href="wiki/architecture-overview.html">Architekturübersicht</a><span class="why">Lernen Sie die Hauptbestandteile des Systems kennen, sehen Sie, wie eine Anfrage vom Browser zu einem Workspace-Container gelangt, und erfahren Sie, welche Datei Sie zuerst öffnen sollten.</span></li>
+      <li><a href="wiki/authentication-and-roles.html">Authentifizierung und Rollen</a><span class="why">Verstehen Sie, wie die lokale Anmeldung und die OIDC-Anmeldung ein Sitzungstoken erzeugen, wie Admins erkannt werden und wo die Autorisierung durchgesetzt wird.</span></li>
+      <li><a href="wiki/slots-and-workspace-leases.html">Slots und Workspace-Leases</a><span class="why">Erfahren Sie, wie Kapazität als Slots modelliert wird, wie ein Workspace einen Slot hält und welche Garantien die Datenbank durchsetzt.</span></li>
+      <li><a href="wiki/starting-a-workspace-runtime.html">Eine Workspace-Runtime starten</a><span class="why">Sehen Sie, was beim Erstellen eines Containers geschieht: Layout auf der Festplatte, Sicherheits-Flags, die verwaltete Provider-Richtlinie und das Warten auf Bereitschaft.</span></li>
+      <li><a href="wiki/gateway-proxy.html">Der Gateway-Proxy</a><span class="why">Verfolgen Sie eine Browser-Anfrage durch Workspace-Auswahl, Austausch der Zugangsdaten, Streaming, WebSocket-Relay und Widget-Injektion.</span></li>
+      <li><a href="wiki/startup-reconciliation-and-idle-reclamation.html">Start, Abgleich und Rückgewinnung inaktiver Workspaces</a><span class="why">Verstehen Sie, wie die App die Datenbank beim Start vorbereitet und die Leases in der Datenbank im Lauf der Zeit mit den tatsächlichen Containern abgleicht.</span></li>
+      <li><a href="wiki/admin-console-and-engine-updates.html">Admin-Konsole und Engine-Updates</a><span class="why">Sehen Sie, wie Administratoren Benutzer sicher verwalten und wie das OpenCode-Engine-Image aktualisiert wird, ohne laufende Workspaces zu unterbrechen.</span></li>
+      <li><a href="wiki/installation-and-releases.html">Installation, Versionierung und Releases</a><span class="why">Erfahren Sie, wie ein Release versioniert und paketiert wird und was der Installer einrichtet und bei Upgrades beibehält.</span></li>
+    </ol>
+  </section>
+
+  <section class="order">
+    <h2>Dateien in Lesereihenfolge</h2>
+    <ol>
+      <li><a href="src/app/config.py.html">app/config.py</a><span class="why">Jede Einstellung, die die Control Plane versteht, damit das übrige Verhalten des Codes leichter nachzuvollziehen ist.</span></li>
+      <li><a href="src/app/models.py.html">app/models.py</a><span class="why">Die Tabellen für Benutzer, Slots und Workspaces, einschließlich der Invarianten, die ihre Indizes durchsetzen.</span></li>
+      <li><a href="src/app/runtime.py.html">app/runtime.py</a><span class="why">Wie ein Workspace-Container tatsächlich gestartet, abgesichert, per Health-Check geprüft und auf der Platte abgelegt wird.</span></li>
+      <li><a href="src/app/gateway.py.html">app/gateway.py</a><span class="why">Der Reverse-Proxy, der eine Portal-Session in authentifizierten Zugriff auf einen Workspace verwandelt.</span></li>
+      <li><a href="src/app/main.py.html">app/main.py</a><span class="why">Die Routen, der Lifespan-Start, die Slot-Freigabelogik und der Idle-Reaper, die alles zusammenhalten.</span></li>
+      <li><a href="src/scripts/install.sh.html">scripts/install.sh</a><span class="why">Wie die Dienste, Traefik und die Control-Plane-Umgebung auf einem Host eingerichtet werden.</span></li>
+    </ol>
+  </section>
+
+  <section class="concepts">
+    <h2>Konzepte, denen Sie begegnen werden</h2>
+    <dl>
+      <dt>Slot- und Workspace-Lease</dt><dd>Eine <code>Slot</code>-Zeile ist eine Einheit Kapazität, und eine <code>Workspace</code>-Zeile hält einen Slot, während sie startet, läuft oder stoppt. Ein partieller eindeutiger Index erlaubt nur einen aktiven Workspace pro Benutzer und Projekt.</dd>
+      <dt>Wegwerf-Runtime, persistenter Zustand</dt><dd>Jeder Workspace-Container wird frisch erstellt und beim Stoppen entfernt, während seine Workspace- und OpenCode-Datenverzeichnisse unter der Datenwurzel erhalten bleiben. Das Secret pro Workspace, der Aktivitätszeitstempel und der Stopp-Grund sind kleine Dateien in demselben Verzeichnis.</dd>
+      <dt>Gateway-Proxying</dt><dd>Der Browser spricht nie direkt mit einem Workspace-Container. Das Gateway prüft, dass der ausgewählte Workspace läuft und dem Benutzer gehört, entfernt Portal-Zugangsdaten, fügt die Basic-Auth des Containers ein und ergänzt HTML-Seiten um das Portal-Widget.</dd>
+      <dt>Abgleich und Rückgewinnung bei Inaktivität</dt><dd>Die Datenbank kann von dem abweichen, was Podman tatsächlich ausführt. Beim Start und bei jedem Reaper-Tick werden veraltete Leases recycelt und Workspaces, die länger als das Timeout inaktiv sind, gestoppt, wobei der Stopp-Grund festgehalten wird, damit das Gateway ihn dem Benutzer erklären kann.</dd>
+      <dt>Zentrale Provider-Policy</dt><dd>Vom Administrator gewählte Listen aktivierter und deaktivierter OpenCode-Provider werden in eine verwaltete Konfigurationsdatei geschrieben und schreibgeschützt in jeden Workspace eingebunden, sodass Benutzer sie nicht überschreiben können.</dd>
+      <dt>Einzige Versionsquelle</dt><dd><code>app/version.py</code> enthält die einzige Kopie der Versionsnummer. UI, API-Metadaten, Installer und Release-Packaging lesen sie alle, und <code>scripts/version.py</code> bearbeitet sie.</dd>
+    </dl>
+  </section>
+
+  <section class="all-files">
+    <h2>Alle Dateien</h2>
+    <ul>
+      <li>
+        <a class="fp" href="src/app/__init__.py.html">app/__init__.py</a>
+        <span class="fm">5 Zeilen</span>
+<div class="fs"><p>Paketmarkierung für <code>app</code>, die <code>__version__</code> aus <code>app.version</code> erneut exportiert, sodass die Version als <code>app.__version__</code> gelesen werden kann. <code>app/version.py</code> bleibt die einzige Stelle, an der die Nummer definiert wird.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/config.py.html">app/config.py</a>
+        <span class="fm">122 Zeilen, 10/10 Definitionen</span>
+<div class="fs"><p>Definiert die Klasse <code>Settings</code>, ein pydantic-settings-Modell, das die gesamte Konfiguration der Control Plane enthält: Domain und Ports, Datenbank, JWT und Cookies, Authentifizierung (lokal und OIDC), Podman-Workspace-Limits, Traefik und die OpenCode-Provider-Richtlinie. Eine <code>settings</code>-Instanz auf Modulebene wird beim Import erzeugt, sodass andere Module sie einfach importieren können.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/db.py.html">app/db.py</a>
+        <span class="fm">23 Zeilen, 2/2 Definitionen</span>
+<div class="fs"><p>Richtet die SQLAlchemy-Datenbankschicht ein: die deklarative <code>Base</code> für Modelle, die aus <code>settings.database_url</code> erzeugte Engine, die Factory <code>SessionLocal</code> und die Session-Dependency <code>get_db</code>.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/gateway.py.html">app/gateway.py</a>
+        <span class="fm">290 Zeilen, 14/14 Definitionen</span>
+<div class="fs"><p>Der Reverse Proxy zwischen dem öffentlichen Port des Portals und den OpenCode-Containern der einzelnen Workspaces. Er wählt den laufenden Workspace aus, zu dem eine Anfrage gehört, tauscht die Portal-Session des Benutzers gegen die Basic-Auth-Zugangsdaten des Workspaces aus, leitet HTTP-Verkehr (Streaming) und WebSocket-Verkehr an den Loopback-Port des Containers weiter und fügt das Portal-Widget in HTML-Seiten ein. Außerdem protokolliert er die Aktivität bei jedem weitergeleiteten Austausch, was an anderer Stelle die Freigabe inaktiver Workspaces speist.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/main.py.html">app/main.py</a>
+        <span class="fm">989 Zeilen, 58/58 Definitionen</span>
+<div class="fs"><p><code>app/main.py</code> ist die FastAPI-Anwendung, die als Control Plane und Gateway für OpenCode Multiuser dient. Dieser Teil enthält die Hilfsfunktionen für Workspace-Leases und Slot-Verwaltung, die Hilfsfunktionen zur Admin-Absicherung, den Idle-Reaper, den Start-<code>lifespan</code> (Migrationen, Slot-Seeding, Abgleich), die Einrichtung von App- und Session-Middleware sowie die Authentifizierungs- und Login-/Registrierungsrouten. Der Rest der Datei (Teile 2 und 3) behandelt das Dashboard, die Admin- und Workspace-APIs, die Endpunkte des Portal-Widgets und den HTTP-/WebSocket-Gateway-Proxy.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/migrations.py.html">app/migrations.py</a>
+        <span class="fm">109 Zeilen, 3/3 Definitionen</span>
+<div class="fs"><p>Idempotente Start-Migrationen, die ältere Datenbanken ohne Migrations-Framework auf das aktuelle Schema bringen. Sie fügen <code>users</code> die Rollen- und OIDC-Spalten hinzu, entfernen eine veraltete Workspace-Constraint und legen den partiellen Unique-Index an, der nur einen aktiven Workspace pro Benutzer und Projekt erlaubt. Unterstützt werden PostgreSQL (Produktion) und SQLite; andere Dialekte werden mit einer Warnung übersprungen.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/models.py.html">app/models.py</a>
+        <span class="fm">83 Zeilen, 6/6 Definitionen</span>
+<div class="fs"><p>SQLAlchemy-ORM-Modelle für die Datenbank des Portals: Benutzer, der Pool von Workspace-Slots und Workspaces. Außerdem werden die Status- und Rollen-Enums definiert. Die hier deklarierten partiellen Unique-Indizes bilden zwei Invarianten ab: ein Konto pro OIDC-Identität und ein aktiver Workspace pro Benutzer und Projekt.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/oidc.py.html">app/oidc.py</a>
+        <span class="fm">131 Zeilen, 6/6 Definitionen</span>
+<div class="fs"><p>Generische OpenID-Connect-Unterstützung auf Basis von Authlib. Sie registriert aus den Einstellungen einen OIDC-Client und bildet die Claims des Providers auf lokale <code>User</code>-Zeilen ab; beim ersten Login wird der Benutzer angelegt, sofern Auto-Provisioning aktiviert ist. Ist Authlib nicht installiert, lässt sich das Modul trotzdem importieren, und OIDC-Anfragen schlagen mit HTTP 503 fehl, sodass reine lokale Deployments weiterhin funktionieren.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/opencode_update.py.html">app/opencode_update.py</a>
+        <span class="fm">234 Zeilen, 14/14 Definitionen</span>
+<div class="fs"><p>Implementiert das vom Admin ausgelöste Update der OpenCode-Engine. Es baut mit Podman ein Kandidaten-Workspace-Image, führt einen Smoke-Test durch, versieht es dann mit dem Tag des produktiven Workspace-Images und hält die neue Version in der Env-Datei der Control Plane fest. Der Fortschritt liegt in einem prozessweiten Zustandsobjekt, das durch ein Lock geschützt ist und vom Portal abgefragt (gepollt) werden kann.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/portal.py.html">app/portal.py</a>
+        <span class="fm">111 Zeilen, 2/2 Definitionen</span>
+<div class="fs"><p>Definiert das kleine Verwaltungs-Widget, das das Gateway in die eigenen HTML-Seiten von OpenCode einschleust. Es enthält CSS und JavaScript des Widgets als String-Konstanten, eine Funktion, die sein Markup erzeugt, und eine Funktion, die dieses Markup in ein HTML-Dokument einfügt. Das Widget bietet die Aktionen Dashboard, Workspace stoppen und Abmelden, und das Skript fragt einen Status-Endpoint ab (Polling), um den Benutzer zurück zum Dashboard zu schicken, sobald der Workspace nicht mehr läuft.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/runtime.py.html">app/runtime.py</a>
+        <span class="fm">290 Zeilen, 23/23 Definitionen</span>
+<div class="fs"><p>Kapselt die Podman-CLI und das Layout auf der Festplatte, die zusammen die Laufzeit eines Workspace ausmachen. Es berechnet die Datenverzeichnisse pro Benutzer und Projekt, speichert das Basic-Auth-Secret pro Workspace, den Aktivitäts-Zeitstempel und den Stop-Grund als kleine Dateien, startet einen stark abgesicherten OpenCode-Container, der an einen aus seinem Slot abgeleiteten Loopback-Port gebunden ist, und fragt ihn per Polling ab, bis er gesund ist. Das Gateway und die Control Plane in <code>app/main.py</code> (hier nicht gezeigt) rufen diese Helfer auf.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/schemas.py.html">app/schemas.py</a>
+        <span class="fm">46 Zeilen, 9/9 Definitionen</span>
+<div class="fs"><p>Pydantic-Request- und Response-Modelle für die HTTP-API: Registrierung und Login, Token-Antworten, Workspace-Start und -Info, Admin-Updates für Benutzer und die Anfrage für das Update der OpenCode-Engine. Feldbeschränkungen validieren die Eingabe an der API-Grenze.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/security.py.html">app/security.py</a>
+        <span class="fm">83 Zeilen, 7/7 Definitionen</span>
+<div class="fs"><p>Hilfsfunktionen für Authentifizierung und Autorisierung der Control Plane. Sie decken Argon2-Passwort-Hashing ab, das Ausstellen und Verifizieren von HS256-JWT-Session-Tokens, das Auflösen des aktuellen Benutzers aus einem Bearer-Token oder Session-Cookie und die Regel, dass der erste Benutzer Admin wird. <code>current_user</code> und <code>require_admin</code> sind FastAPI-Dependencies, die Routen schützen.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/traefik.py.html">app/traefik.py</a>
+        <span class="fm">14 Zeilen, 2/2 Definitionen</span>
+<div class="fs"><p>Kleine Helfer für die Traefik-Seite der Plattform: das Bauen der öffentlichen URL, mit der ein Workspace geöffnet wird, und das Entfernen übrig gebliebener Traefik-Routendateien pro Workspace aus einem älteren Design.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/ui.py.html">app/ui.py</a>
+        <span class="fm">268 Zeilen, 6/6 Definitionen</span>
+<div class="fs"><p>Serverseitig gerendertes HTML für die eigenen Seiten des Portals: Login, Registrierung, das Workspace-Dashboard, die Admin-Benutzerkonsole und die Admin-Systemkonsole. Jede Seite ist ein einziger Python-f-String mit inline eingebettetem JavaScript, und alle teilen sich das Stylesheet <code>APP_CSS</code> und die Inline-SVG-Icons aus <code>_icon</code>. Die Seiten sind statische Hüllen. Sie holen ihre Daten nach dem Laden von den JSON-Endpoints des Portals (zum Beispiel <code>/workspaces</code>, <code>/api/admin/users</code>).</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/version.py.html">app/version.py</a>
+        <span class="fm">8 Zeilen</span>
+<div class="fs"><p>Hält die Version der Anwendung als einen einzigen String <code>__version__</code>. Sein Docstring erklärt ihn zur einzigen Quelle der Wahrheit (Single Source of Truth) für die Nummer nach Semantic Versioning, und <code>app/__init__.py</code> exportiert ihn erneut.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/check-host.sh.html">scripts/check-host.sh</a>
+        <span class="fm">16 Zeilen</span>
+<div class="fs"><p>Eine rein lesende Diagnose, die ausgibt, ob der aktuelle Linux-Benutzer das mitbringt, was rootless Podman unter systemd benötigt: ein Runtime-Verzeichnis, einen User-D-Bus-Socket, delegierte cgroup-Controller sowie Podmans eigene cgroup-/Runtime-Einstellungen. Es nimmt keine Änderungen vor. <code>install.sh</code> führt ähnliche Preflight-Prüfungen aus und bricht bei einem Fehler ab, während dieses Skript nur berichtet.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/install.sh.html">scripts/install.sh</a>
+        <span class="fm">421 Zeilen</span>
+<div class="fs"><p>Installer und Upgrader für einen Host mit einem einzelnen Benutzerkonto. Aus einem entpackten Release-Verzeichnis gestartet, prüft er vorab Python, die systemd-User-Session und die cgroup-Delegation. Anschließend kopiert er die App nach <code>~/opt/opencode-multiuser</code>, schreibt oder migriert <code>control-plane.env</code>, rendert die Quadlet- und Traefik-Dateien, baut das Python-venv und das Workspace-Image und startet die Dienste. Er ist dafür gedacht, für Upgrades erneut ausgeführt zu werden: In <code>control-plane.env</code> bereits gespeicherte Einstellungen bleiben erhalten, es sei denn, die zugehörige Variable ist ausdrücklich in der Umgebung gesetzt.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/package-release.sh.html">scripts/package-release.sh</a>
+        <span class="fm">38 Zeilen</span>
+<div class="fs"><p>Erzeugt aus dem Repository-Baum ein Release-Archiv <code>opencode-multiuser-&lt;version&gt;.zip</code> sowie eine Prüfsummendatei <code>.sha256</code>. Die Version wird aus <code>scripts/version.py show</code> gelesen, und das Archiv wird mit <code>rsync</code> bereitgestellt (ohne <code>.git</code>, virtualenvs, Caches und Build-Ausgaben), bevor es gezippt wird.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/reset-orphans.sh.html">scripts/reset-orphans.sh</a>
+        <span class="fm">4 Zeilen</span>
+<div class="fs"><p>Aufräumhilfe, die übrig gebliebene OpenCode-Workspace-Container aus Podman zwangsweise entfernt. Der Namensfilter ist absichtlich streng, sodass nur dynamisch vergebene Workspace-Container angefasst werden und feste Dienste wie PostgreSQL und Traefik nicht.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/version.py.html">scripts/version.py</a>
+        <span class="fm">83 Zeilen, 5/5 Definitionen</span>
+<div class="fs"><p>Kleines CLI, das die Semantic Version des Projekts anzeigt, setzt oder erhöht. Die einzige gespeicherte Kopie der Version ist die Zeile <code>__version__ = &quot;X.Y.Z&quot;</code> in <code>app/version.py</code>. Dieses Skript bearbeitet sie direkt in der Datei und akzeptiert nur striktes <code>MAJOR.MINOR.PATCH</code>. <code>package-release.sh</code> ruft dessen Befehl <code>show</code> auf, um das Release-Archiv zu benennen.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/tests/test_gateway.py.html">tests/test_gateway.py</a>
+        <span class="fm">402 Zeilen, 38/38 Definitionen</span>
+<div class="fs"><p>Das Haupttestmodul des Repositorys. Trotz seines Namens deckt es weit mehr als das Gateway ab: Traefik-URL und Routen-Bereinigung, Runtime-Helfer (Host-Ports, Datenverzeichnisse pro Workspace, verwaltete OpenCode-Provider-Policy, Readiness-Polling), das Löschen von Workspaces, das Portal-Widget und die HTML-Seiten, Rollen- und OIDC-Provisionierung, Admin-Schutzmechanismen und die Validierung der OpenCode-Version. Die meisten Tests nutzen <code>monkeypatch</code>, um <code>settings</code>-Werte wie <code>data_root</code> auf ein pytest-<code>tmp_path</code> umzuleiten, und In-Memory-SQLite für datenbankgestützte Fälle.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/tests/test_traefik.py.html">tests/test_traefik.py</a>
+        <span class="fm">10 Zeilen, 1/1 Definition</span>
+<div class="fs"><p>Unit-Test für <code>app.traefik.workspace_open_url</code>, den Helfer, der die Browser-URL zum Öffnen eines Workspaces über den einzelnen Portal-Host erzeugt. Er legt fest, wie die konfigurierte Control-Plane-URL mit einer Workspace-ID kombiniert wird.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/tests/test_version.py.html">tests/test_version.py</a>
+        <span class="fm">32 Zeilen, 3/3 Definitionen</span>
+<div class="fs"><p>Tests, die die Versionsnummer des Projekts konsistent halten: Die <code>__version__</code> des Pakets ist eine schlichte Semantic Version, sie wird auf der Login- und der Registrierungsseite angezeigt, und der Befehl <code>scripts/version.py show</code> gibt denselben Wert aus. Sie verbinden <code>app/__init__.py</code>, <code>app/ui.py</code> und <code>scripts/version.py</code>.</p></div>      </li>
+    </ul>
+  </section>
+<p class="credit">Explanations written by Claude Sonnet 5.5. Die Erklärungen sind maschinell geschrieben; maßgeblich ist der Code. Übersetzt von Claude Sonnet 5.5. Originalsprache: English.</p></main>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+<script src="assets/ui.js"></script>
+<script src="assets/search-index.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

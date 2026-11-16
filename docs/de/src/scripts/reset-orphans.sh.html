@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scripts/reset-orphans.sh (opencode-multiuser)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../../assets/style.css">
+<link rel="alternate" hreflang="en" href="../../../src/scripts/reset-orphans.sh.html">
+<link rel="alternate" hreflang="de" href="../../../de/src/scripts/reset-orphans.sh.html">
+<link rel="alternate" hreflang="id" href="../../../id/src/scripts/reset-orphans.sh.html">
+</head>
+<body data-root="../../" data-top="../../../" data-page="src/scripts/reset-orphans.sh.html" data-variant="de-standard" class="page-file has-variants">
+<header class="bar">
+  <a class="brand" href="../../index.html">opencode-multiuser</a>
+  <div class="search" role="search">
+    <input id="q" type="search" placeholder="Funktion oder Klasse suchen" autocomplete="off"
+           spellcheck="false" aria-label="Funktion oder Klasse suchen" aria-controls="q-results">
+    <kbd class="q-key" aria-hidden="true">/</kbd>
+    <ol id="q-results" role="listbox" hidden></ol>
+  </div>
+  <div class="bar-right">
+<div class="mode" role="group" aria-label="Wie Zeilenanmerkungen angezeigt werden">
+  <button type="button" data-mode="hover" aria-pressed="true"><span class="lg">Anmerkungen beim Darüberfahren</span><span class="sm">Hover</span></button>
+  <button type="button" data-mode="inline" aria-pressed="false"><span class="lg">Anmerkungen im Text</span><span class="sm">Inline</span></button>
+</div>
+    <div class="variant" role="group" aria-label="Sprache und Leserniveau">
+      <select data-switch="lang" aria-label="Sprache" title="Sprache">
+<option value="en" lang="en">English</option><option value="de" lang="de" selected>Deutsch</option><option value="id" lang="id">Bahasa Indonesia</option>      </select>
+    </div>
+<a class="ext" href="https://github.com/cahya-wirawan/opencode-multiuser">Repository</a>  </div>
+</header>
+<div class="frame">
+  <nav class="files" aria-label="Leitfaden und Dateien">
+    <h2 class="nav-h"><a href="../../index.html#guide">Leitfaden</a></h2>
+    <ul class="guide"><li><span class="grp">Grundlagen</span><ul><li><a href="../../wiki/architecture-overview.html">Architekturübersicht</a></li></ul></li><li><span class="grp">Benutzer und Zugriff</span><ul><li><a href="../../wiki/authentication-and-roles.html">Authentifizierung und Rollen</a></li></ul></li><li><span class="grp">Lebenszyklus eines Workspace</span><ul><li><a href="../../wiki/slots-and-workspace-leases.html">Slots und Workspace-Leases</a></li><li><a href="../../wiki/starting-a-workspace-runtime.html">Eine Workspace-Runtime starten</a></li></ul></li><li><span class="grp">Anfragepfad</span><ul><li><a href="../../wiki/gateway-proxy.html">Der Gateway-Proxy</a></li></ul></li><li><span class="grp">Lebenszyklus eines Workspace</span><ul><li><a href="../../wiki/startup-reconciliation-and-idle-reclamation.html">Start, Abgleich und Rückgewinnung inaktiver Workspaces</a></li></ul></li><li><span class="grp">Administration</span><ul><li><a href="../../wiki/admin-console-and-engine-updates.html">Admin-Konsole und Engine-Updates</a></li></ul></li><li><span class="grp">Betrieb</span><ul><li><a href="../../wiki/installation-and-releases.html">Installation, Versionierung und Releases</a></li></ul></li></ul>
+    <h2 class="nav-h">Dateien</h2>
+    <ul class="tree"><li><details open><summary>app/</summary><ul><li><a class="file" href="../../src/app/__init__.py.html" data-f="app/__init__.py">__init__.py</a></li><li><a class="file" href="../../src/app/config.py.html" data-f="app/config.py">config.py</a></li><li><a class="file" href="../../src/app/db.py.html" data-f="app/db.py">db.py</a></li><li><a class="file" href="../../src/app/gateway.py.html" data-f="app/gateway.py">gateway.py</a></li><li><a class="file" href="../../src/app/main.py.html" data-f="app/main.py">main.py</a></li><li><a class="file" href="../../src/app/migrations.py.html" data-f="app/migrations.py">migrations.py</a></li><li><a class="file" href="../../src/app/models.py.html" data-f="app/models.py">models.py</a></li><li><a class="file" href="../../src/app/oidc.py.html" data-f="app/oidc.py">oidc.py</a></li><li><a class="file" href="../../src/app/opencode_update.py.html" data-f="app/opencode_update.py">opencode_update.py</a></li><li><a class="file" href="../../src/app/portal.py.html" data-f="app/portal.py">portal.py</a></li><li><a class="file" href="../../src/app/runtime.py.html" data-f="app/runtime.py">runtime.py</a></li><li><a class="file" href="../../src/app/schemas.py.html" data-f="app/schemas.py">schemas.py</a></li><li><a class="file" href="../../src/app/security.py.html" data-f="app/security.py">security.py</a></li><li><a class="file" href="../../src/app/traefik.py.html" data-f="app/traefik.py">traefik.py</a></li><li><a class="file" href="../../src/app/ui.py.html" data-f="app/ui.py">ui.py</a></li><li><a class="file" href="../../src/app/version.py.html" data-f="app/version.py">version.py</a></li></ul></details></li><li><details open><summary>scripts/</summary><ul><li><a class="file" href="../../src/scripts/check-host.sh.html" data-f="scripts/check-host.sh">check-host.sh</a></li><li><a class="file" href="../../src/scripts/install.sh.html" data-f="scripts/install.sh">install.sh</a></li><li><a class="file" href="../../src/scripts/package-release.sh.html" data-f="scripts/package-release.sh">package-release.sh</a></li><li><a class="file" href="../../src/scripts/reset-orphans.sh.html" data-f="scripts/reset-orphans.sh" aria-current="page">reset-orphans.sh</a></li><li><a class="file" href="../../src/scripts/version.py.html" data-f="scripts/version.py">version.py</a></li></ul></details></li><li><details open><summary>tests/</summary><ul><li><a class="file" href="../../src/tests/test_gateway.py.html" data-f="tests/test_gateway.py">test_gateway.py</a></li><li><a class="file" href="../../src/tests/test_traefik.py.html" data-f="tests/test_traefik.py">test_traefik.py</a></li><li><a class="file" href="../../src/tests/test_version.py.html" data-f="tests/test_version.py">test_version.py</a></li></ul></details></li></ul>
+  </nav>
+<main class="reader">
+  <div class="file-head">
+    <h1 class="path"><span class="dir">scripts/</span>reset-orphans.sh</h1>
+    <p class="facts">4 Zeilen, 0 von 0 Definitionen erklärt, 2 Zeilenanmerkungen. <a href="https://github.com/cahya-wirawan/opencode-multiuser/blob/daba1bb4978d829ac4332de701c7692c7c231d5f/scripts/reset-orphans.sh">Original anzeigen</a></p>
+<p class="in-guide">Im Leitfaden: <a href="../../wiki/installation-and-releases.html">Installation, Versionierung und Releases</a></p>  </div>
+  <section class="about" aria-label="Über diese Datei">
+    <p>Aufräumhilfe, die übrig gebliebene OpenCode-Workspace-Container aus Podman zwangsweise entfernt. Der Namensfilter ist absichtlich streng, sodass nur dynamisch vergebene Workspace-Container angefasst werden und feste Dienste wie PostgreSQL und Traefik nicht.</p>
+  </section>
+  <div class="code" id="code" tabindex="-1">
+<div class="l" id="L1" data-n="1"><a class="g" href="#L1" aria-label="Zeile 1">1</a><span class="c"><span class="t-ch x-c">#!/usr/bin/env bash</span></span></div>
+<div class="l" id="L2" data-n="2"><a class="g" href="#L2" aria-label="Zeile 2">2</a><span class="c"><span class="t-nb x-n">set</span><span class="t-w x-w"> </span>-euo<span class="t-w x-w"> </span>pipefail</span></div>
+<div class="l nr ns" id="L3" data-n="3" data-note="0"><a class="g" href="#L3" aria-label="Zeile 3">3</a><span class="c"><span class="t-c1 x-c"># Removes only dynamically allocated OpenCode workspace containers.</span></span></div>
+<div class="inl" data-k="0"><span class="inl-at">Zeile 3</span><p>Benennt die Sicherheitszusage: Es werden nur dynamisch vergebene Workspace-Container entfernt.</p></div>
+<div class="l nr ns" id="L4" data-n="4" data-note="1"><a class="g" href="#L4" aria-label="Zeile 4">4</a><span class="c">podman<span class="t-w x-w"> </span>ps<span class="t-w x-w"> </span>-a<span class="t-w x-w"> </span>--format<span class="t-w x-w"> </span><span class="t-s1 x-s">&#x27;{{.Names}}&#x27;</span><span class="t-w x-w"> </span><span class="t-p x-p">|</span><span class="t-w x-w"> </span>awk<span class="t-w x-w"> </span><span class="t-s1 x-s">&#x27;/^oc-[0-9]+-[a-f0-9]+$/&#x27;</span><span class="t-w x-w"> </span><span class="t-p x-p">|</span><span class="t-w x-w"> </span>xargs<span class="t-w x-w"> </span>-r<span class="t-w x-w"> </span>podman<span class="t-w x-w"> </span>rm<span class="t-w x-w"> </span>-f</span></div>
+<div class="inl" data-k="1"><span class="inl-at">Zeile 4</span><p>Listet alle Container, laufende wie gestoppte, nach Namen auf. <code>awk</code> behält nur Namen, die auf <code>^oc-&lt;digits&gt;-&lt;hex&gt;$</code> passen, also die Form, die der Kommentar als dynamisch vergeben bezeichnet. Die behaltenen Namen gehen an <code>podman rm -f</code>, das sie stoppt und entfernt. <code>xargs -r</code> überspringt <code>podman rm</code>, wenn nichts gepasst hat, sodass das Skript auf einem sauberen Host nichts bewirkt. Containernamen, die nicht zum Muster passen, werden nie ausgewählt.</p></div>
+  </div>
+<p class="credit">Explanations written by Claude Sonnet 5.5. Die Erklärungen sind maschinell geschrieben; maßgeblich ist der Code. Übersetzt von Claude Sonnet 5.5. Originalsprache: English.</p></main>
+<aside class="outline" aria-label="Definitionen in dieser Datei">
+</aside>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+<script src="../../assets/ui.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script type="application/json" id="ch-data">{"path": "scripts/reset-orphans.sh", "syms": [], "notes": [{"start": 3, "end": 3, "html": "<p>Benennt die Sicherheitszusage: Es werden nur dynamisch vergebene Workspace-Container entfernt.<\/p>"}, {"start": 4, "end": 4, "html": "<p>Listet alle Container, laufende wie gestoppte, nach Namen auf. <code>awk<\/code> behält nur Namen, die auf <code>^oc-&lt;digits&gt;-&lt;hex&gt;$<\/code> passen, also die Form, die der Kommentar als dynamisch vergeben bezeichnet. Die behaltenen Namen gehen an <code>podman rm -f<\/code>, das sie stoppt und entfernt. <code>xargs -r<\/code> überspringt <code>podman rm<\/code>, wenn nichts gepasst hat, sodass das Skript auf einem sauberen Host nichts bewirkt. Containernamen, die nicht zum Muster passen, werden nie ausgewählt.<\/p>"}], "ext": [], "attrs": []}</script><script src="../../assets/app.js"></script>
+</body>
+</html>
