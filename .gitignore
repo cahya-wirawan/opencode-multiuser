@@ -170,3 +170,7 @@ tmp/
 .DS_Store
 node_modules/
 private/
+
+notes.txt
+.codehover-cache/
+codehover-site

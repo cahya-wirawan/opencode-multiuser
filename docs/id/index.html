@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>opencode-multiuser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="alternate" hreflang="en" href="../index.html">
+<link rel="alternate" hreflang="de" href="../de/index.html">
+<link rel="alternate" hreflang="id" href="../id/index.html">
+</head>
+<body data-root="" data-top="../" data-page="index.html" data-variant="id-standard" class="page-index has-variants">
+<header class="bar">
+  <a class="brand" href="index.html">opencode-multiuser</a>
+  <div class="search" role="search">
+    <input id="q" type="search" placeholder="Cari fungsi atau class" autocomplete="off"
+           spellcheck="false" aria-label="Cari fungsi atau class" aria-controls="q-results">
+    <kbd class="q-key" aria-hidden="true">/</kbd>
+    <ol id="q-results" role="listbox" hidden></ol>
+  </div>
+  <div class="bar-right">
+    <div class="variant" role="group" aria-label="Bahasa dan tingkat pembaca">
+      <select data-switch="lang" aria-label="Bahasa" title="Bahasa">
+<option value="en" lang="en">English</option><option value="de" lang="de">Deutsch</option><option value="id" lang="id" selected>Bahasa Indonesia</option>      </select>
+    </div>
+<a class="ext" href="https://github.com/cahya-wirawan/opencode-multiuser">Repositori</a>  </div>
+</header>
+<div class="frame">
+  <nav class="files" aria-label="Panduan dan file">
+    <h2 class="nav-h"><a href="index.html#guide">Panduan</a></h2>
+    <ul class="guide"><li><span class="grp">Fondasi</span><ul><li><a href="wiki/architecture-overview.html">Gambaran arsitektur</a></li></ul></li><li><span class="grp">Pengguna dan akses</span><ul><li><a href="wiki/authentication-and-roles.html">Autentikasi dan role</a></li></ul></li><li><span class="grp">Siklus hidup workspace</span><ul><li><a href="wiki/slots-and-workspace-leases.html">Slot dan lease workspace</a></li><li><a href="wiki/starting-a-workspace-runtime.html">Menjalankan runtime workspace</a></li></ul></li><li><span class="grp">Jalur request</span><ul><li><a href="wiki/gateway-proxy.html">Proxy gateway</a></li></ul></li><li><span class="grp">Siklus hidup workspace</span><ul><li><a href="wiki/startup-reconciliation-and-idle-reclamation.html">Startup, rekonsiliasi, dan reklamasi idle</a></li></ul></li><li><span class="grp">Administrasi</span><ul><li><a href="wiki/admin-console-and-engine-updates.html">Konsol admin dan pembaruan engine</a></li></ul></li><li><span class="grp">Operasional</span><ul><li><a href="wiki/installation-and-releases.html">Instalasi, versioning, dan rilis</a></li></ul></li></ul>
+    <h2 class="nav-h">File</h2>
+    <ul class="tree"><li><details open><summary>app/</summary><ul><li><a class="file" href="src/app/__init__.py.html" data-f="app/__init__.py">__init__.py</a></li><li><a class="file" href="src/app/config.py.html" data-f="app/config.py">config.py</a></li><li><a class="file" href="src/app/db.py.html" data-f="app/db.py">db.py</a></li><li><a class="file" href="src/app/gateway.py.html" data-f="app/gateway.py">gateway.py</a></li><li><a class="file" href="src/app/main.py.html" data-f="app/main.py">main.py</a></li><li><a class="file" href="src/app/migrations.py.html" data-f="app/migrations.py">migrations.py</a></li><li><a class="file" href="src/app/models.py.html" data-f="app/models.py">models.py</a></li><li><a class="file" href="src/app/oidc.py.html" data-f="app/oidc.py">oidc.py</a></li><li><a class="file" href="src/app/opencode_update.py.html" data-f="app/opencode_update.py">opencode_update.py</a></li><li><a class="file" href="src/app/portal.py.html" data-f="app/portal.py">portal.py</a></li><li><a class="file" href="src/app/runtime.py.html" data-f="app/runtime.py">runtime.py</a></li><li><a class="file" href="src/app/schemas.py.html" data-f="app/schemas.py">schemas.py</a></li><li><a class="file" href="src/app/security.py.html" data-f="app/security.py">security.py</a></li><li><a class="file" href="src/app/traefik.py.html" data-f="app/traefik.py">traefik.py</a></li><li><a class="file" href="src/app/ui.py.html" data-f="app/ui.py">ui.py</a></li><li><a class="file" href="src/app/version.py.html" data-f="app/version.py">version.py</a></li></ul></details></li><li><details open><summary>scripts/</summary><ul><li><a class="file" href="src/scripts/check-host.sh.html" data-f="scripts/check-host.sh">check-host.sh</a></li><li><a class="file" href="src/scripts/install.sh.html" data-f="scripts/install.sh">install.sh</a></li><li><a class="file" href="src/scripts/package-release.sh.html" data-f="scripts/package-release.sh">package-release.sh</a></li><li><a class="file" href="src/scripts/reset-orphans.sh.html" data-f="scripts/reset-orphans.sh">reset-orphans.sh</a></li><li><a class="file" href="src/scripts/version.py.html" data-f="scripts/version.py">version.py</a></li></ul></details></li><li><details open><summary>tests/</summary><ul><li><a class="file" href="src/tests/test_gateway.py.html" data-f="tests/test_gateway.py">test_gateway.py</a></li><li><a class="file" href="src/tests/test_traefik.py.html" data-f="tests/test_traefik.py">test_traefik.py</a></li><li><a class="file" href="src/tests/test_version.py.html" data-f="tests/test_version.py">test_version.py</a></li></ul></details></li></ul>
+  </nav>
+<main class="home">
+  <h1 class="title">opencode-multiuser</h1>
+  <p class="facts">24 file, 3812 baris kode, 209 dari 209 definisi dijelaskan, 326 catatan baris.</p>
+
+  <section class="overview"><p>OpenCode Multiuser memungkinkan banyak orang memakai OpenCode melalui satu portal browser. Sebuah control plane FastAPI mengautentikasi pengguna (akun lokal atau OIDC generik), lalu menjalankan container Podman rootless yang sekali pakai dan terkunci, yang menjalankan <code>opencode serve</code>, untuk setiap proyek yang dibuka pengguna. File proyek dan state OpenCode berada di direktori per-pengguna pada host, sehingga container dapat dihancurkan dan dibuat ulang tanpa kehilangan pekerjaan. Kapasitas berupa kumpulan slot bernomor yang tetap (<code>MAX_SLOTS</code>), dan container dibuat sesuai permintaan serta dihapus saat stop, logout, atau idle timeout.</p><p>Aplikasi FastAPI yang sama juga berperan sebagai gateway. Traefik meneruskan satu hostname publik ke aplikasi ini. Request yang bukan rute portal jatuh ke proxy catch-all di <code>app/gateway.py</code>, yang menemukan workspace pengguna yang sedang berjalan, menukar sesi portal dengan kredensial Basic Auth privat milik container tersebut, dan meneruskan lalu lintas HTTP dan WebSocket ke port khusus loopback yang diturunkan dari slot. <code>app/runtime.py</code> adalah satu-satunya kode yang berbicara dengan Podman, <code>app/models.py</code> dan <code>app/migrations.py</code> mendefinisikan state PostgreSQL, dan sebuah reaper di latar belakang merekonsiliasi lease di database dengan container yang benar-benar ada.</p></section>
+
+  <p class="howto">Baca panduan untuk memahami bagaimana bagian-bagiannya saling terhubung, atau buka sebuah file lalu arahkan kursor ke fungsi, class, parameter, atau baris untuk membaca fungsinya. Klik untuk menjaga penjelasan tetap terbuka; tekan <kbd>/</kbd> untuk mencari definisi.</p>
+
+  <section class="guide-list" id="guide">
+    <h2>Panduan</h2>
+    <ol>
+      <li><a href="wiki/architecture-overview.html">Gambaran arsitektur</a><span class="why">Lihat bagian-bagian utama sistem, bagaimana sebuah request berjalan dari browser ke container workspace, dan file mana yang sebaiknya dibuka lebih dulu.</span></li>
+      <li><a href="wiki/authentication-and-roles.html">Autentikasi dan role</a><span class="why">Pahami bagaimana sign-in lokal dan OIDC menghasilkan token sesi, bagaimana admin dikenali, dan di mana otorisasi ditegakkan.</span></li>
+      <li><a href="wiki/slots-and-workspace-leases.html">Slot dan lease workspace</a><span class="why">Pelajari bagaimana kapasitas dimodelkan sebagai slot, bagaimana sebuah workspace memegang satu slot, dan jaminan apa yang ditegakkan oleh database.</span></li>
+      <li><a href="wiki/starting-a-workspace-runtime.html">Menjalankan runtime workspace</a><span class="why">Lihat apa yang terjadi saat sebuah container dibuat: tata letak di disk, flag keamanan, kebijakan provider terkelola, dan penantian kesiapan.</span></li>
+      <li><a href="wiki/gateway-proxy.html">Proxy gateway</a><span class="why">Ikuti satu request browser melalui pemilihan workspace, penukaran kredensial, streaming, relay WebSocket, dan injeksi widget.</span></li>
+      <li><a href="wiki/startup-reconciliation-and-idle-reclamation.html">Startup, rekonsiliasi, dan reklamasi idle</a><span class="why">Pahami bagaimana aplikasi menyiapkan database saat startup dan menjaga lease di database tetap selaras dengan container yang sebenarnya dari waktu ke waktu.</span></li>
+      <li><a href="wiki/admin-console-and-engine-updates.html">Konsol admin dan pembaruan engine</a><span class="why">Lihat bagaimana administrator mengelola pengguna dengan aman dan bagaimana image engine OpenCode diperbarui tanpa mengganggu workspace yang sedang berjalan.</span></li>
+      <li><a href="wiki/installation-and-releases.html">Instalasi, versioning, dan rilis</a><span class="why">Pelajari bagaimana sebuah rilis diberi versi dan dikemas, serta apa yang disiapkan dan dipertahankan oleh installer saat upgrade.</span></li>
+    </ol>
+  </section>
+
+  <section class="order">
+    <h2>File dalam urutan baca</h2>
+    <ol>
+      <li><a href="src/app/config.py.html">app/config.py</a><span class="why">Setiap pengaturan yang dipahami control plane, agar perilaku kode lainnya lebih mudah diikuti.</span></li>
+      <li><a href="src/app/models.py.html">app/models.py</a><span class="why">Tabel users, slots, dan workspaces, termasuk invarian yang ditegakkan oleh indeksnya.</span></li>
+      <li><a href="src/app/runtime.py.html">app/runtime.py</a><span class="why">Bagaimana container workspace sebenarnya dijalankan, diamankan, diperiksa kesehatannya, dan disimpan di disk.</span></li>
+      <li><a href="src/app/gateway.py.html">app/gateway.py</a><span class="why">Reverse proxy yang mengubah sesi portal menjadi akses terautentikasi ke satu workspace.</span></li>
+      <li><a href="src/app/main.py.html">app/main.py</a><span class="why">Rute, startup lifespan, logika pelepasan slot, dan reaper idle yang menyatukan semuanya.</span></li>
+      <li><a href="src/scripts/install.sh.html">scripts/install.sh</a><span class="why">Bagaimana service, Traefik, dan environment control-plane dipasang pada sebuah host.</span></li>
+    </ol>
+  </section>
+
+  <section class="concepts">
+    <h2>Konsep yang akan Anda temui</h2>
+    <dl>
+      <dt>Slot dan lease workspace</dt><dd>Satu baris <code>Slot</code> adalah satu unit kapasitas dan satu baris <code>Workspace</code> menahan sebuah slot selama workspace sedang dimulai, berjalan, atau dihentikan. Indeks unik parsial hanya mengizinkan satu workspace aktif per pengguna dan proyek.</dd>
+      <dt>Runtime sekali pakai, state persisten</dt><dd>Setiap container workspace dibuat baru dan dihapus saat stop, sementara direktori data workspace dan OpenCode-nya tetap disimpan di bawah data root. Secret per-workspace, timestamp aktivitas, dan alasan berhenti adalah file-file kecil di direktori yang sama.</dd>
+      <dt>Proxying gateway</dt><dd>Browser tidak pernah berbicara langsung dengan container workspace. Gateway memeriksa bahwa workspace yang dipilih sedang berjalan dan dimiliki pengguna, membuang kredensial portal, menyuntikkan Basic Auth milik container, dan menambahkan widget Portal ke halaman HTML.</dd>
+      <dt>Rekonsiliasi dan reklamasi idle</dt><dd>Database bisa menyimpang dari apa yang benar-benar dijalankan Podman. Saat startup dan pada setiap tick reaper, lease yang usang didaur ulang dan workspace yang idle melewati timeout dihentikan, dengan alasan berhenti dicatat agar gateway dapat menjelaskannya kepada pengguna.</dd>
+      <dt>Kebijakan provider terpusat</dt><dd>Daftar provider OpenCode yang diaktifkan dan dinonaktifkan yang dipilih administrator ditulis ke file konfigurasi terkelola dan di-mount read-only ke setiap workspace, sehingga pengguna tidak dapat menimpanya.</dd>
+      <dt>Satu sumber versi</dt><dd><code>app/version.py</code> menyimpan satu-satunya salinan nomor versi. UI, metadata API, installer, dan pengemasan rilis semuanya membacanya, dan <code>scripts/version.py</code> menyuntingnya.</dd>
+    </dl>
+  </section>
+
+  <section class="all-files">
+    <h2>Semua file</h2>
+    <ul>
+      <li>
+        <a class="fp" href="src/app/__init__.py.html">app/__init__.py</a>
+        <span class="fm">5 baris</span>
+<div class="fs"><p>Penanda paket untuk <code>app</code> yang mengekspor ulang <code>__version__</code> dari <code>app.version</code>, sehingga versi dapat dibaca sebagai <code>app.__version__</code>. <code>app/version.py</code> tetap menjadi satu-satunya tempat nomor versi didefinisikan.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/config.py.html">app/config.py</a>
+        <span class="fm">122 baris, 10/10 definisi</span>
+<div class="fs"><p>Mendefinisikan kelas <code>Settings</code>, sebuah model pydantic-settings yang menyimpan seluruh konfigurasi control plane: domain dan port, database, JWT dan cookie, autentikasi (lokal dan OIDC), batasan workspace Podman, serta kebijakan provider Traefik dan OpenCode. Sebuah instance <code>settings</code> tingkat modul dibuat saat impor, sehingga modul lain cukup mengimpornya.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/db.py.html">app/db.py</a>
+        <span class="fm">23 baris, 2/2 definisi</span>
+<div class="fs"><p>Menyiapkan lapisan database SQLAlchemy: <code>Base</code> deklaratif untuk model, engine yang dibangun dari <code>settings.database_url</code>, factory <code>SessionLocal</code>, dan dependency sesi <code>get_db</code>.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/gateway.py.html">app/gateway.py</a>
+        <span class="fm">290 baris, 14/14 definisi</span>
+<div class="fs"><p>Reverse proxy antara port publik portal dan container OpenCode per-workspace. Proxy ini memilih workspace berjalan yang menjadi tujuan sebuah request, menukar sesi portal pengguna dengan kredensial Basic Auth milik workspace, meneruskan lalu lintas HTTP (streaming) dan WebSocket ke port loopback container, serta menyisipkan widget portal ke halaman HTML. Proxy ini juga mencatat aktivitas pada setiap pertukaran yang diproksikan, yang dipakai untuk reklamasi workspace idle di tempat lain.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/main.py.html">app/main.py</a>
+        <span class="fm">989 baris, 58/58 definisi</span>
+<div class="fs"><p><code>app/main.py</code> adalah aplikasi FastAPI yang berperan sebagai control plane dan gateway untuk OpenCode Multiuser. Bagian ini memuat helper pembukuan lease dan slot workspace, helper keamanan admin, idle reaper, <code>lifespan</code> saat startup (migrasi, seeding slot, rekonsiliasi), penyiapan aplikasi dan middleware sesi, serta route autentikasi dan login/registrasi. Sisa file (bagian 2 dan 3) mencakup dashboard, API admin dan workspace, endpoint widget portal, dan proxy gateway HTTP/WebSocket.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/migrations.py.html">app/migrations.py</a>
+        <span class="fm">109 baris, 3/3 definisi</span>
+<div class="fs"><p>Migrasi startup yang idempoten yang membawa database lama ke skema saat ini tanpa framework migrasi. Migrasi ini menambahkan kolom role dan OIDC ke <code>users</code>, menghapus constraint workspace yang sudah usang, dan membuat partial unique index yang hanya mengizinkan satu workspace aktif per pengguna dan proyek. Mendukung PostgreSQL (produksi) dan SQLite, dan melewati dialek lain dengan peringatan.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/models.py.html">app/models.py</a>
+        <span class="fm">83 baris, 6/6 definisi</span>
+<div class="fs"><p>Model ORM SQLAlchemy untuk database portal: pengguna, kumpulan slot workspace, dan workspace. File ini juga mendefinisikan enum status dan role. Partial unique index yang dideklarasikan di sini mengodekan dua invarian: satu akun per identitas OIDC, dan satu workspace aktif per pengguna dan proyek.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/oidc.py.html">app/oidc.py</a>
+        <span class="fm">131 baris, 6/6 definisi</span>
+<div class="fs"><p>Dukungan OpenID Connect generik yang dibangun di atas Authlib. File ini mendaftarkan satu client OIDC dari settings dan memetakan claim dari provider ke baris <code>User</code> lokal, serta membuat pengguna saat login pertama jika auto-provisioning diaktifkan. Jika Authlib tidak terpasang, modul tetap dapat di-import dan request OIDC gagal dengan HTTP 503, sehingga deployment yang hanya memakai autentikasi lokal tetap berjalan.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/opencode_update.py.html">app/opencode_update.py</a>
+        <span class="fm">234 baris, 14/14 definisi</span>
+<div class="fs"><p>Mengimplementasikan pembaruan engine OpenCode yang dipicu oleh admin. File ini membangun image workspace kandidat dengan Podman, melakukan smoke test, lalu memberi tag ulang sebagai image workspace yang aktif dan mencatat versi baru di file env control-plane. Progres disimpan dalam objek state tingkat proses yang dijaga oleh lock, yang dapat di-poll oleh portal.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/portal.py.html">app/portal.py</a>
+        <span class="fm">111 baris, 2/2 definisi</span>
+<div class="fs"><p>Mendefinisikan widget manajemen kecil yang disuntikkan gateway ke halaman HTML milik OpenCode sendiri. File ini menyimpan CSS dan JavaScript widget sebagai konstanta string, sebuah fungsi yang membangun markup-nya, dan sebuah fungsi yang menyisipkan markup itu ke dokumen HTML. Widget menawarkan aksi Dashboard, Stop workspace, dan Logout, dan skripnya melakukan polling ke endpoint status untuk mengembalikan pengguna ke dashboard ketika workspace tidak lagi berjalan.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/runtime.py.html">app/runtime.py</a>
+        <span class="fm">290 baris, 23/23 definisi</span>
+<div class="fs"><p>Membungkus CLI Podman dan tata letak di disk yang membentuk runtime sebuah workspace. File ini menghitung direktori data per pengguna/per proyek, menyimpan secret Basic Auth per workspace, timestamp aktivitas, dan alasan berhenti sebagai file kecil, memulai container OpenCode yang dikunci ketat dan terikat ke port loopback yang diturunkan dari slot-nya, lalu melakukan polling sampai container sehat. Gateway dan control plane di <code>app/main.py</code> (tidak ditampilkan di sini) memanggil helper-helper ini.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/schemas.py.html">app/schemas.py</a>
+        <span class="fm">46 baris, 9/9 definisi</span>
+<div class="fs"><p>Model request dan response Pydantic untuk HTTP API: registrasi dan login, response token, start dan info workspace, pembaruan pengguna oleh admin, dan request pembaruan engine OpenCode. Constraint field memvalidasi input di batas API.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/security.py.html">app/security.py</a>
+        <span class="fm">83 baris, 7/7 definisi</span>
+<div class="fs"><p>Helper autentikasi dan otorisasi untuk control plane. Mencakup hashing password Argon2, penerbitan dan verifikasi token sesi JWT HS256, penentuan pengguna saat ini dari bearer token atau cookie sesi, dan aturan pengguna pertama menjadi admin. <code>current_user</code> dan <code>require_admin</code> adalah dependency FastAPI yang melindungi route.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/traefik.py.html">app/traefik.py</a>
+        <span class="fm">14 baris, 2/2 definisi</span>
+<div class="fs"><p>Helper kecil untuk sisi Traefik dari platform: membangun URL publik yang dipakai untuk membuka workspace dan menghapus file route Traefik per-workspace sisa dari desain lama.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/ui.py.html">app/ui.py</a>
+        <span class="fm">268 baris, 6/6 definisi</span>
+<div class="fs"><p>HTML yang dirender di server untuk halaman milik portal sendiri: login, registrasi, dashboard workspace, konsol pengguna admin, dan konsol sistem admin. Setiap halaman adalah satu f-string Python dengan JavaScript inline, dan semuanya berbagi stylesheet <code>APP_CSS</code> dan ikon SVG inline dari <code>_icon</code>. Halaman-halaman ini adalah shell statis. Setelah dimuat, halaman mengambil data dari endpoint JSON portal (misalnya <code>/workspaces</code>, <code>/api/admin/users</code>).</p></div>      </li>
+      <li>
+        <a class="fp" href="src/app/version.py.html">app/version.py</a>
+        <span class="fm">8 baris</span>
+<div class="fs"><p>Menyimpan versi aplikasi sebagai satu string <code>__version__</code>. Docstring-nya menyatakannya sebagai sumber kebenaran tunggal untuk nomor Semantic Versioning, dan <code>app/__init__.py</code> mengekspor ulang string ini.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/check-host.sh.html">scripts/check-host.sh</a>
+        <span class="fm">16 baris</span>
+<div class="fs"><p>Diagnostik hanya-baca yang mencetak apakah pengguna Linux saat ini memiliki semua yang dibutuhkan Podman rootless di bawah systemd: direktori runtime, socket D-Bus pengguna, controller cgroup yang didelegasikan, serta pengaturan cgroup/runtime milik Podman sendiri. Skrip ini tidak mengubah apa pun. <code>install.sh</code> menjalankan pemeriksaan preflight yang serupa dan berhenti jika gagal, sedangkan skrip ini hanya melaporkan.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/install.sh.html">scripts/install.sh</a>
+        <span class="fm">421 baris</span>
+<div class="fs"><p>Installer dan upgrader untuk host dengan satu akun pengguna. Dijalankan dari pohon rilis yang sudah diekstrak, skrip ini melakukan preflight terhadap Python, sesi pengguna systemd, dan delegasi cgroup. Setelah itu skrip menyalin aplikasi ke <code>~/opt/opencode-multiuser</code>, menulis atau memigrasikan <code>control-plane.env</code>, me-render file Quadlet dan Traefik, membangun venv Python dan image workspace, lalu menjalankan service. Skrip ini dirancang untuk dijalankan ulang saat upgrade: pengaturan yang sudah tersimpan di <code>control-plane.env</code> dipertahankan kecuali variabel yang sesuai diatur secara eksplisit di environment.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/package-release.sh.html">scripts/package-release.sh</a>
+        <span class="fm">38 baris</span>
+<div class="fs"><p>Membangun arsip rilis <code>opencode-multiuser-&lt;version&gt;.zip</code> beserta file checksum <code>.sha256</code> dari pohon repositori. Versi dibaca dari <code>scripts/version.py show</code>, dan arsip di-stage dengan <code>rsync</code> (mengecualikan <code>.git</code>, virtualenv, cache, dan output build) sebelum di-zip.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/reset-orphans.sh.html">scripts/reset-orphans.sh</a>
+        <span class="fm">4 baris</span>
+<div class="fs"><p>Helper pembersihan yang menghapus paksa container workspace OpenCode yang tertinggal dari Podman. Filter nama sengaja dibuat ketat, sehingga hanya container workspace yang dialokasikan secara dinamis yang disentuh dan service tetap seperti PostgreSQL dan Traefik tidak terpengaruh.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/scripts/version.py.html">scripts/version.py</a>
+        <span class="fm">83 baris, 5/5 definisi</span>
+<div class="fs"><p>CLI kecil yang menampilkan, mengatur, atau menaikkan Semantic Version proyek. Satu-satunya salinan versi yang tersimpan adalah baris <code>__version__ = &quot;X.Y.Z&quot;</code> di <code>app/version.py</code>. Skrip ini menyuntingnya di tempat dan hanya menerima format ketat <code>MAJOR.MINOR.PATCH</code>. <code>package-release.sh</code> memanggil perintah <code>show</code>-nya untuk menamai arsip rilis.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/tests/test_gateway.py.html">tests/test_gateway.py</a>
+        <span class="fm">402 baris, 38/38 definisi</span>
+<div class="fs"><p>Modul pengujian utama repositori. Meskipun bernama gateway, cakupannya jauh lebih luas: URL Traefik dan pembersihan rute, helper runtime (port host, direktori data per-workspace, kebijakan provider OpenCode terkelola, polling kesiapan), penghapusan workspace, widget dan halaman HTML portal, provisioning role dan OIDC, proteksi admin, serta validasi versi OpenCode. Sebagian besar tes memakai <code>monkeypatch</code> untuk mengalihkan nilai <code>settings</code> seperti <code>data_root</code> ke <code>tmp_path</code> pytest, dan SQLite in-memory untuk kasus yang berbasis database.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/tests/test_traefik.py.html">tests/test_traefik.py</a>
+        <span class="fm">10 baris, 1/1 definisi</span>
+<div class="fs"><p>Unit test untuk <code>app.traefik.workspace_open_url</code>, helper yang membangun URL browser yang dipakai untuk membuka workspace melalui satu host portal. Tes ini menetapkan bagaimana URL control-plane yang dikonfigurasi digabungkan dengan id workspace.</p></div>      </li>
+      <li>
+        <a class="fp" href="src/tests/test_version.py.html">tests/test_version.py</a>
+        <span class="fm">32 baris, 3/3 definisi</span>
+<div class="fs"><p>Tes yang menjaga nomor versi proyek tetap konsisten: <code>__version__</code> paket adalah Semantic Version biasa, ditampilkan di halaman login dan registrasi, dan perintah <code>scripts/version.py show</code> mencetak nilai yang sama. Tes ini menghubungkan <code>app/__init__.py</code>, <code>app/ui.py</code>, dan <code>scripts/version.py</code>.</p></div>      </li>
+    </ul>
+  </section>
+<p class="credit">Explanations written by Claude Sonnet 5.5. Penjelasan ditulis oleh mesin; kodenya adalah acuan utama. Diterjemahkan oleh Claude Sonnet 5.5. Bahasa asli: English.</p></main>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+<script src="assets/ui.js"></script>
+<script src="assets/search-index.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

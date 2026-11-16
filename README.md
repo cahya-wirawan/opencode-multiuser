@@ -6,6 +6,16 @@ OpenCode Multiuser turns OpenCode into a centrally managed, multi-user developer
 
 Instead of giving every developer a permanently running VM or asking users to manage OpenCode locally, the platform allocates an isolated rootless Podman container only when a workspace is needed. A central FastAPI control plane handles authentication, authorization, workspace lifecycle, routing, capacity limits, idle cleanup, and administrative controls. Traefik exposes a single portal URL, while OpenCode itself remains largely unmodified upstream software.
 
+## Documentation
+
+Browsable source documentation is published as a GitHub Pages site:
+
+**<https://cahya-wirawan.github.io/opencode-multiuser>**
+
+Hover over any function, class, parameter or line to see what it does, and follow the guide pages that explain how the parts fit together (architecture, authentication, workspace slots and leases, the gateway proxy, startup and reconciliation, administration, and installation). The site is available in English, German (`/de/`) and Indonesian (`/id/`).
+
+The site is generated from this repository with codehover and lives in the [`docs/`](docs/) folder, which GitHub Pages serves. It documents the code as of the commit it was generated from, so it can lag behind the latest changes.
+
 ## Why this is useful for enterprises
 
 OpenCode is powerful because it can inspect repositories, edit files, run commands, and invoke development tools. Those same capabilities make a shared deployment difficult to operate safely without isolation, identity, lifecycle management, and governance. OpenCode Multiuser adds that missing enterprise layer.

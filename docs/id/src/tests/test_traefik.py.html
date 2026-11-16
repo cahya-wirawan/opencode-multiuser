@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tests/test_traefik.py (opencode-multiuser)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../../assets/style.css">
+<link rel="alternate" hreflang="en" href="../../../src/tests/test_traefik.py.html">
+<link rel="alternate" hreflang="de" href="../../../de/src/tests/test_traefik.py.html">
+<link rel="alternate" hreflang="id" href="../../../id/src/tests/test_traefik.py.html">
+</head>
+<body data-root="../../" data-top="../../../" data-page="src/tests/test_traefik.py.html" data-variant="id-standard" class="page-file has-variants">
+<header class="bar">
+  <a class="brand" href="../../index.html">opencode-multiuser</a>
+  <div class="search" role="search">
+    <input id="q" type="search" placeholder="Cari fungsi atau class" autocomplete="off"
+           spellcheck="false" aria-label="Cari fungsi atau class" aria-controls="q-results">
+    <kbd class="q-key" aria-hidden="true">/</kbd>
+    <ol id="q-results" role="listbox" hidden></ol>
+  </div>
+  <div class="bar-right">
+<div class="mode" role="group" aria-label="Cara catatan baris ditampilkan">
+  <button type="button" data-mode="hover" aria-pressed="true"><span class="lg">Catatan saat kursor diarahkan</span><span class="sm">Hover</span></button>
+  <button type="button" data-mode="inline" aria-pressed="false"><span class="lg">Catatan sebaris</span><span class="sm">Sebaris</span></button>
+</div>
+    <div class="variant" role="group" aria-label="Bahasa dan tingkat pembaca">
+      <select data-switch="lang" aria-label="Bahasa" title="Bahasa">
+<option value="en" lang="en">English</option><option value="de" lang="de">Deutsch</option><option value="id" lang="id" selected>Bahasa Indonesia</option>      </select>
+    </div>
+<a class="ext" href="https://github.com/cahya-wirawan/opencode-multiuser">Repositori</a>  </div>
+</header>
+<div class="frame">
+  <nav class="files" aria-label="Panduan dan file">
+    <h2 class="nav-h"><a href="../../index.html#guide">Panduan</a></h2>
+    <ul class="guide"><li><span class="grp">Fondasi</span><ul><li><a href="../../wiki/architecture-overview.html">Gambaran arsitektur</a></li></ul></li><li><span class="grp">Pengguna dan akses</span><ul><li><a href="../../wiki/authentication-and-roles.html">Autentikasi dan role</a></li></ul></li><li><span class="grp">Siklus hidup workspace</span><ul><li><a href="../../wiki/slots-and-workspace-leases.html">Slot dan lease workspace</a></li><li><a href="../../wiki/starting-a-workspace-runtime.html">Menjalankan runtime workspace</a></li></ul></li><li><span class="grp">Jalur request</span><ul><li><a href="../../wiki/gateway-proxy.html">Proxy gateway</a></li></ul></li><li><span class="grp">Siklus hidup workspace</span><ul><li><a href="../../wiki/startup-reconciliation-and-idle-reclamation.html">Startup, rekonsiliasi, dan reklamasi idle</a></li></ul></li><li><span class="grp">Administrasi</span><ul><li><a href="../../wiki/admin-console-and-engine-updates.html">Konsol admin dan pembaruan engine</a></li></ul></li><li><span class="grp">Operasional</span><ul><li><a href="../../wiki/installation-and-releases.html">Instalasi, versioning, dan rilis</a></li></ul></li></ul>
+    <h2 class="nav-h">File</h2>
+    <ul class="tree"><li><details open><summary>app/</summary><ul><li><a class="file" href="../../src/app/__init__.py.html" data-f="app/__init__.py">__init__.py</a></li><li><a class="file" href="../../src/app/config.py.html" data-f="app/config.py">config.py</a></li><li><a class="file" href="../../src/app/db.py.html" data-f="app/db.py">db.py</a></li><li><a class="file" href="../../src/app/gateway.py.html" data-f="app/gateway.py">gateway.py</a></li><li><a class="file" href="../../src/app/main.py.html" data-f="app/main.py">main.py</a></li><li><a class="file" href="../../src/app/migrations.py.html" data-f="app/migrations.py">migrations.py</a></li><li><a class="file" href="../../src/app/models.py.html" data-f="app/models.py">models.py</a></li><li><a class="file" href="../../src/app/oidc.py.html" data-f="app/oidc.py">oidc.py</a></li><li><a class="file" href="../../src/app/opencode_update.py.html" data-f="app/opencode_update.py">opencode_update.py</a></li><li><a class="file" href="../../src/app/portal.py.html" data-f="app/portal.py">portal.py</a></li><li><a class="file" href="../../src/app/runtime.py.html" data-f="app/runtime.py">runtime.py</a></li><li><a class="file" href="../../src/app/schemas.py.html" data-f="app/schemas.py">schemas.py</a></li><li><a class="file" href="../../src/app/security.py.html" data-f="app/security.py">security.py</a></li><li><a class="file" href="../../src/app/traefik.py.html" data-f="app/traefik.py">traefik.py</a></li><li><a class="file" href="../../src/app/ui.py.html" data-f="app/ui.py">ui.py</a></li><li><a class="file" href="../../src/app/version.py.html" data-f="app/version.py">version.py</a></li></ul></details></li><li><details open><summary>scripts/</summary><ul><li><a class="file" href="../../src/scripts/check-host.sh.html" data-f="scripts/check-host.sh">check-host.sh</a></li><li><a class="file" href="../../src/scripts/install.sh.html" data-f="scripts/install.sh">install.sh</a></li><li><a class="file" href="../../src/scripts/package-release.sh.html" data-f="scripts/package-release.sh">package-release.sh</a></li><li><a class="file" href="../../src/scripts/reset-orphans.sh.html" data-f="scripts/reset-orphans.sh">reset-orphans.sh</a></li><li><a class="file" href="../../src/scripts/version.py.html" data-f="scripts/version.py">version.py</a></li></ul></details></li><li><details open><summary>tests/</summary><ul><li><a class="file" href="../../src/tests/test_gateway.py.html" data-f="tests/test_gateway.py">test_gateway.py</a></li><li><a class="file" href="../../src/tests/test_traefik.py.html" data-f="tests/test_traefik.py" aria-current="page">test_traefik.py</a></li><li><a class="file" href="../../src/tests/test_version.py.html" data-f="tests/test_version.py">test_version.py</a></li></ul></details></li></ul>
+  </nav>
+<main class="reader">
+  <div class="file-head">
+    <h1 class="path"><span class="dir">tests/</span>test_traefik.py</h1>
+    <p class="facts">10 baris, 1 dari 1 definisi dijelaskan, 2 catatan baris. <a href="https://github.com/cahya-wirawan/opencode-multiuser/blob/daba1bb4978d829ac4332de701c7692c7c231d5f/tests/test_traefik.py">Lihat versi asli</a></p>
+  </div>
+  <section class="about" aria-label="Tentang file ini">
+    <p>Unit test untuk <code>app.traefik.workspace_open_url</code>, helper yang membangun URL browser yang dipakai untuk membuka workspace melalui satu host portal. Tes ini menetapkan bagaimana URL control-plane yang dikonfigurasi digabungkan dengan id workspace.</p>
+  </section>
+  <div class="code" id="code" tabindex="-1">
+<div class="l" id="L1" data-n="1"><a class="g" href="#L1" aria-label="Baris 1">1</a><span class="c"><span class="t-kn x-k">from</span><span class="t-w x-w"> </span><span class="t-nn x-n">app</span><span class="t-w x-w"> </span><span class="t-kn x-k">import</span> <span class="t-n x-n">traefik</span></span></div>
+<div class="l" id="L2" data-n="2"><a class="g" href="#L2" aria-label="Baris 2">2</a><span class="c">​</span></div>
+<div class="l" id="L3" data-n="3"><a class="g" href="#L3" aria-label="Baris 3">3</a><span class="c">​</span></div>
+<div class="l" id="L4" data-n="4"><a class="g" href="#L4" aria-label="Baris 4">4</a><span class="c"><span class="t-k x-k">def</span><span class="t-w x-w"> </span><span class="sym def k-function" data-s="0" tabindex="0">test_workspace_open_url</span><span class="t-p x-p">(</span><span class="sym prm" data-s="0" data-p="monkeypatch" tabindex="0">monkeypatch</span><span class="t-p x-p">)</span><span class="t-p x-p">:</span></span></div>
+<div class="l nr ns" id="L5" data-n="5" data-note="0"><a class="g" href="#L5" aria-label="Baris 5">5</a><span class="c">    <span class="sym prm" data-s="0" data-p="monkeypatch" tabindex="0">monkeypatch</span><span class="t-o x-o">.</span><span class="t-n x-n">setattr</span><span class="t-p x-p">(</span><span class="t-n x-n">traefik</span><span class="t-o x-o">.</span><span class="t-n x-n">settings</span><span class="t-p x-p">,</span> <span class="t-s2 x-s">&quot;</span><span class="t-s2 x-s">control_plane_url</span><span class="t-s2 x-s">&quot;</span><span class="t-p x-p">,</span> <span class="t-s2 x-s">&quot;</span><span class="t-s2 x-s">https://code.example.test/</span><span class="t-s2 x-s">&quot;</span><span class="t-p x-p">)</span></span></div>
+<div class="inl" data-k="0"><span class="inl-at">Baris 5</span><p>Garis miring di akhir pada URL dasar disengaja: assertion di bawahnya mengharapkan tepat satu <code>/</code> antara host dan <code>open</code>.</p></div>
+<div class="l" id="L6" data-n="6"><a class="g" href="#L6" aria-label="Baris 6">6</a><span class="c">​</span></div>
+<div class="l nr ns" id="L7" data-n="7" data-note="1"><a class="g" href="#L7" aria-label="Baris 7">7</a><span class="c">    <span class="t-k x-k">assert</span> <span class="t-p x-p">(</span></span></div>
+<div class="l nr" id="L8" data-n="8" data-note="1"><a class="g" href="#L8" aria-label="Baris 8">8</a><span class="c">        <span class="t-n x-n">traefik</span><span class="t-o x-o">.</span><span class="sym ref k-function" data-c="1" data-how="n" tabindex="0">workspace_open_url</span><span class="t-p x-p">(</span><span class="t-s2 x-s">&quot;</span><span class="t-s2 x-s">12345678-abcd-1234-abcd-123456789012</span><span class="t-s2 x-s">&quot;</span><span class="t-p x-p">)</span></span></div>
+<div class="l nr" id="L9" data-n="9" data-note="1"><a class="g" href="#L9" aria-label="Baris 9">9</a><span class="c">        <span class="t-o x-o">==</span> <span class="t-s2 x-s">&quot;</span><span class="t-s2 x-s">https://code.example.test/open/12345678-abcd-1234-abcd-123456789012</span><span class="t-s2 x-s">&quot;</span></span></div>
+<div class="l nr" id="L10" data-n="10" data-note="1"><a class="g" href="#L10" aria-label="Baris 10">10</a><span class="c">    <span class="t-p x-p">)</span></span></div>
+<div class="inl" data-k="1"><span class="inl-at">Baris 7–10</span><p>Membandingkan URL yang dihasilkan dengan string <code>https://code.example.test/open/&lt;id&gt;</code> yang diharapkan, yang mengunci bentuk rute <code>/open/{workspace_id}</code>.</p></div>
+  </div>
+<p class="credit">Explanations written by Claude Sonnet 5.5. Penjelasan ditulis oleh mesin; kodenya adalah acuan utama. Diterjemahkan oleh Claude Sonnet 5.5. Bahasa asli: English.</p></main>
+<aside class="outline" aria-label="Definisi dalam file ini">
+  <h2>Dalam file ini</h2>
+  <ul>
+    <li style="--d: 0"><a href="#L4" class="o k-function" data-s="0">test_workspace_open_url</a></li>
+  </ul>
+</aside>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+<script src="../../assets/ui.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script type="application/json" id="ch-data">{"path": "tests/test_traefik.py", "syms": [{"name": "test_workspace_open_url", "q": "test_workspace_open_url", "kind": "function", "path": "tests/test_traefik.py", "line": 4, "end": 10, "sig": "def test_workspace_open_url(monkeypatch)", "href": "../../src/tests/test_traefik.py.html#L4", "src": "https://github.com/cahya-wirawan/opencode-multiuser/blob/daba1bb4978d829ac4332de701c7692c7c231d5f/tests/test_traefik.py#L4", "card": {"summary": "<p>Memeriksa bahwa <code>traefik.workspace_open_url<\/code> mengembalikan <code>&lt;control_plane_url&gt;/open/&lt;workspace id&gt;<\/code>, tanpa menggandakan garis miring ketika URL yang dikonfigurasi berakhir dengan <code>/<\/code>.<\/p>", "details": "<p>Tes meng-override <code>traefik.settings.control_plane_url<\/code> dengan <code>monkeypatch.setattr<\/code>, sehingga objek settings global dipulihkan setelah tes. Setelah itu tes membandingkan hasil untuk id workspace berbentuk UUID dengan URL <code>/open/&lt;id&gt;<\/code> yang diharapkan.<\/p>", "notes": "<p>Nilai yang dikonfigurasi sengaja memiliki garis miring di akhir sementara URL yang diharapkan hanya memiliki satu garis miring sebelum <code>open<\/code>, sehingga tes mencakup normalisasi garis miring akhir. Implementasi <code>workspace_open_url<\/code> tidak ditampilkan di sini.<\/p>", "params": [["monkeypatch", "Fixture pytest yang dipakai untuk sementara mengganti pengaturan <code>control_plane_url<\/code>."]]}, "same": true, "guides": [], "used": [], "usedMore": 0, "usedByName": false, "uses": [["workspace_open_url", "../../src/app/traefik.py.html#L4"]]}, {"name": "workspace_open_url", "q": "workspace_open_url", "kind": "function", "path": "app/traefik.py", "line": 4, "end": 5, "sig": "def workspace_open_url(workspace_id: str) -> str", "href": "../../src/app/traefik.py.html#L4", "src": "https://github.com/cahya-wirawan/opencode-multiuser/blob/daba1bb4978d829ac4332de701c7692c7c231d5f/app/traefik.py#L4", "card": {"summary": "<p>Membangun URL portal untuk membuka workspace, <code>&lt;control_plane_url&gt;/open/&lt;workspace_id&gt;<\/code>.<\/p>", "returns": "<p>String URL absolut.<\/p>", "notes": "<p>Garis miring di akhir <code>control_plane_url<\/code> dihapus untuk menghindari garis miring ganda. ID workspace disisipkan apa adanya, tanpa URL-escaping.<\/p>", "params": [["workspace_id", "Identifier workspace."]]}, "same": false, "guides": [["Gambaran arsitektur", "../../wiki/architecture-overview.html"]], "used": [["main.py (tingkat modul)", "../../src/app/main.py.html#L38", 1, ""], ["_workspace_response", "../../src/app/main.py.html#L61", 1, "main.py"], ["test_workspace_open_url", "../../src/tests/test_gateway.py.html#L9", 1, "test_gateway.py"], ["test_workspace_open_url", "../../src/tests/test_traefik.py.html#L8", 1, ""]], "usedMore": 0, "usedByName": true, "uses": []}], "notes": [{"start": 5, "end": 5, "html": "<p>Garis miring di akhir pada URL dasar disengaja: assertion di bawahnya mengharapkan tepat satu <code>/<\/code> antara host dan <code>open<\/code>.<\/p>"}, {"start": 7, "end": 10, "html": "<p>Membandingkan URL yang dihasilkan dengan string <code>https://code.example.test/open/&lt;id&gt;<\/code> yang diharapkan, yang mengunci bentuk rute <code>/open/{workspace_id}<\/code>.<\/p>"}], "ext": [], "attrs": []}</script><script src="../../assets/app.js"></script>
+</body>
+</html>
